@@ -35,7 +35,7 @@ php -S localhost:8080 -t public    # en producción, DocumentRoot → public/
 `setup.php` genera la **clave de cifrado** de los tokens (`key`) y el primer usuario administrador.
 Guarda una copia de `config/config.local.php`: sin la clave hay que volver a introducir los tokens.
 
-Requiere las extensiones `curl`, `sodium`, `zip`, `mbstring` y `json`. `storage/` necesita permiso de
+Requiere las extensiones `curl`, `zip`, `mbstring`, `json` y `sodium` u `openssl` (para cifrar los tokens). `storage/` necesita permiso de
 escritura y debe quedar fuera de la web (si el hosting no permite apuntar a `public/`, el `.htaccess` de la
 raíz lo redirige todo allí).
 
@@ -148,7 +148,7 @@ return [
 
 ## Seguridad
 
-- Los tokens de las instalaciones se guardan cifrados (libsodium) con la clave de `config.local.php`.
+- Los tokens de las instalaciones se guardan cifrados (libsodium, o AES-256-GCM de OpenSSL si no está) con la clave de `config.local.php`.
 - Todas las acciones exigen sesión, el rol adecuado y token CSRF; cada una queda en la actividad.
 - Las peticiones a las instalaciones verifican el certificado SSL (se puede desactivar por instalación) y no
   siguen redirecciones.

@@ -15,6 +15,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $root = dirname(__DIR__);
+require $root . '/src/Core/ConfigException.php';
 require $root . '/src/Core/Crypto.php';
 
 function ask(string $question, bool $hidden = false): string
@@ -34,11 +35,15 @@ function ask(string $question, bool $hidden = false): string
 
 echo "Cosmo · comprobación del entorno\n";
 $ok = true;
-foreach (['curl' => 'hablar con las instalaciones y GitHub', 'sodium' => 'cifrar los tokens', 'zip' => 'comprobar los paquetes', 'mbstring' => 'textos', 'json' => 'datos'] as $ext => $why) {
+foreach (['curl' => 'hablar con las instalaciones y GitHub', 'zip' => 'comprobar los paquetes', 'mbstring' => 'textos', 'json' => 'datos'] as $ext => $why) {
     $loaded = extension_loaded($ext);
     $ok = $ok && $loaded;
     printf("  %s %-9s %s\n", $loaded ? '✓' : '✗', $ext, $loaded ? '' : "(falta: necesaria para $why)");
 }
+// Cifrado de los tokens: sodium o, si no está, openssl
+$cipher = extension_loaded('sodium') ? 'sodium' : (extension_loaded('openssl') ? 'openssl' : null);
+$ok = $ok && $cipher !== null;
+printf("  %s %-9s %s\n", $cipher ? '✓' : '✗', $cipher ?? 'sodium', $cipher ? '(cifrado de los tokens)' : '(falta sodium u openssl: necesaria para cifrar los tokens)');
 if (PHP_VERSION_ID < 80100) {
     echo '  ✗ PHP ' . PHP_VERSION . " (hace falta 8.1 o superior)\n";
     $ok = false;
