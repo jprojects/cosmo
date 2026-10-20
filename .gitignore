@@ -1,0 +1,18 @@
+config/config.local.php
+storage/data/*
+!storage/data/.gitkeep
+storage/backups/*
+!storage/backups/.gitkeep
+storage/packages/*
+!storage/packages/.gitkeep
+storage/cache/*
+!storage/cache/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+
+# Editores y sistema
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
