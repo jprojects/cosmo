@@ -117,6 +117,9 @@ final class App
             (new $class($this))->$method();
         } catch (HttpException $e) {
             $this->renderError($e->status, $e->getMessage());
+        } catch (ConfigException $e) {
+            Log::error('Configuración: ' . $e->getMessage());
+            $this->renderError(500, $e->getMessage());
         } catch (\Throwable $e) {
             Log::error('Excepción no controlada: ' . $e->getMessage(), ['url' => $_SERVER['REQUEST_URI'] ?? null, 'exception' => $e]);
             $this->renderError(500, !empty($this->config['debug']) ? $e->getMessage() : 'Se ha producido un error interno', $e);

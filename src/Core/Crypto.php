@@ -17,7 +17,8 @@ final class Crypto
     {
         $key = is_string($base64Key) ? base64_decode($base64Key, true) : false;
         if ($key === false || strlen($key) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) {
-            throw new \RuntimeException("Falta la clave de Cosmo ('key' en config/config.local.php). Ejecuta php bin/setup.php");
+            throw new ConfigException("La clave 'key' de config/config.local.php falta o no es válida: debe ser base64 de 32 bytes. "
+                . "Genera una con: php -r 'echo base64_encode(random_bytes(32)), PHP_EOL;'");
         }
         $this->key = $key;
     }
