@@ -196,6 +196,16 @@ final class View
         return ($i === 0 ? (string) $bytes : number_format($n, $n >= 100 ? 0 : 1, ',', '.')) . ' ' . $units[$i];
     }
 
+    /** Importe en euros: "3,42 €" (con más decimales si es muy pequeño, para no mostrar "0,00 €"). */
+    public function eur(?float $amount): string
+    {
+        if ($amount === null) {
+            return '—';
+        }
+        $decimals = $amount > 0 && $amount < 0.1 ? 4 : 2;
+        return number_format($amount, $decimals, ',', '.') . ' €';
+    }
+
     /** "hace 5 min", "hace 3 días"… */
     public function ago(?string $date): string
     {

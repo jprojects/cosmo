@@ -147,6 +147,40 @@ $urls = [
       </div>
     </section>
 
+    <?php $ai = $d['ai'] ?? null; ?>
+    <?php if (is_array($ai)): ?>
+      <section class="cs-card">
+        <div class="cs-card-head"><h2><?= $this->icon('sparkles') ?> Filtrado con IA</h2>
+          <?php if (!empty($ai['enabled'])): ?><span class="cs-badge cs-badge-success">activada</span><?php else: ?><span class="cs-badge">desactivada</span><?php endif ?></div>
+        <div class="cs-card-body">
+          <?php if (empty($ai['enabled'])): ?>
+            <p class="cs-muted cs-small">Se activa con <code>ai.enabled</code> y <code>ai.api_key</code> en el <code>config.local.php</code> de la instalación, y <code>"list": { "ai": … }</code> en cada módulo.</p>
+          <?php elseif (isset($ai['error'])): ?>
+            <p class="cs-c-warning">Sin datos de consumo: <?= $this->e($ai['error']) ?></p>
+          <?php else:
+              $limit = (float) ($ai['monthly_limit_eur'] ?? 0);
+              $used = (float) ($ai['month_cost_eur'] ?? 0);
+              $pct = $limit > 0 ? min(100, $used / $limit * 100) : null;
+              $tone = ['blocked' => 'danger', 'warn' => 'warning'][$ai['limit_state'] ?? ''] ?? 'success';
+          ?>
+            <dl class="cs-kv">
+              <dt>Modelo</dt><dd><?= $this->e($ai['model'] ?? '—') ?> <span class="cs-muted">(<?= $this->e($ai['provider'] ?? '') ?>)</span></dd>
+              <dt>Gasto del mes</dt><dd>
+                <strong><?= $this->eur($used) ?></strong>
+                <?php if ($pct !== null): ?>
+                  de <?= $this->eur($limit) ?> (<?= (int) floor($pct) ?> %)
+                  <div class="cs-meter cs-meter-<?= $tone ?>" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= (int) $pct ?>"><span style="width:<?= round($pct, 1) ?>%"></span></div>
+                <?php else: ?><span class="cs-muted">· sin límite mensual</span><?php endif ?>
+              </dd>
+              <dt>Consultas</dt><dd><?= (int) ($ai['queries'] ?? 0) ?> este mes<?= (int) ($ai['errors'] ?? 0) ? ' · <span class="cs-c-warning">' . (int) $ai['errors'] . ' con error</span>' : '' ?></dd>
+              <dt>Tokens</dt><dd class="cs-small"><?= number_format((int) ($ai['input_tokens'] ?? 0), 0, ',', '.') ?> de entrada · <?= number_format((int) ($ai['output_tokens'] ?? 0), 0, ',', '.') ?> de salida</dd>
+            </dl>
+            <p class="cs-muted cs-small" style="margin:8px 0 0">Datos de la última comprobación (<?= $this->time($snap['checked_at'] ?? null) ?>). El detalle de cada consulta está en «Consumo de IA» de la instalación.</p>
+          <?php endif ?>
+        </div>
+      </section>
+    <?php endif ?>
+
     <section class="cs-card">
       <div class="cs-card-head"><h2><?= $this->icon('activity') ?> Disponibilidad · 7 días</h2>
         <?php if ($history['uptime'] !== null): ?>

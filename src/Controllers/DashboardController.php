@@ -17,7 +17,7 @@ final class DashboardController extends Controller
         $snapshots = $this->app->monitor()->snapshots();
 
         $rows = [];
-        $summary = ['total' => 0, 'online' => 0, 'offline' => 0, 'outdated' => 0, 'attention' => 0, 'versions' => []];
+        $summary = ['total' => 0, 'online' => 0, 'offline' => 0, 'outdated' => 0, 'attention' => 0, 'versions' => [], 'ai' => 0, 'ai_cost' => 0.0];
         foreach ($this->app->installations()->all() as $id => $inst) {
             $snap = $snapshots[$id] ?? null;
             $data = Monitor::data($snap);
@@ -43,6 +43,10 @@ final class DashboardController extends Controller
             }
             if ($version !== null) {
                 $summary['versions'][$version] = ($summary['versions'][$version] ?? 0) + 1;
+            }
+            if (!empty($data['ai']['enabled'])) {
+                $summary['ai']++;
+                $summary['ai_cost'] += (float) ($data['ai']['month_cost_eur'] ?? 0);
             }
         }
         uksort($summary['versions'], static fn ($a, $b) => version_compare((string) $b, (string) $a));

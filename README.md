@@ -18,6 +18,8 @@ Habla con cada Quasar por su API remota (`?r=remote`, Quasar 0.2.0 o superior).
   mantenimiento, autoprueba con vuelta atrás automática, migración de BD y comprobación final.
 - **Copias de seguridad** completas, de BD o de ficheros: se crean en la instalación y se pueden descargar o
   guardar en Cosmo (segunda ubicación, con sha256 verificado). Copias programadas diarias o semanales.
+- **Filtrado con IA** (Quasar 0.5.0+): si cada instalación lo tiene activado, modelo, gasto del mes respecto a su
+  límite, consultas y errores. Total del mes en el panel, filtro «Con IA» y avisos al 80 % y al agotar el límite.
 - **Log** e **integridad** de cada instalación, **mantenimiento** on/off y **disponibilidad** (uptime y tiempo
   de respuesta de 7 días).
 - **Actividad**: registro de todas las acciones (usuario, IP, resultado), filtrable.

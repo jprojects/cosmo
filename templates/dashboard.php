@@ -47,6 +47,12 @@ $canOperate = $this->can('operate');
   <div class="cs-stat<?= $summary['offline'] ? ' is-danger' : '' ?>"><div class="cs-stat-label"><?= $this->icon('wifi-off', 'cs-icon-sm') ?> No responden</div><div class="cs-stat-value"><?= $summary['offline'] ?></div></div>
   <div class="cs-stat<?= $summary['outdated'] ? ' is-warning' : '' ?>"><div class="cs-stat-label"><?= $this->icon('circle-arrow-up', 'cs-icon-sm') ?> Por actualizar</div><div class="cs-stat-value"><?= $summary['outdated'] ?></div></div>
   <div class="cs-stat<?= $summary['attention'] ? ' is-warning' : '' ?>"><div class="cs-stat-label"><?= $this->icon('triangle-alert', 'cs-icon-sm') ?> Requieren atención</div><div class="cs-stat-value"><?= $summary['attention'] ?></div></div>
+  <?php if ($summary['ai']): ?>
+    <div class="cs-stat" title="Suma del gasto de este mes de las <?= (int) $summary['ai'] ?> instalaciones con IA, según su última comprobación">
+      <div class="cs-stat-label"><?= $this->icon('sparkles', 'cs-icon-sm') ?> IA este mes · <?= (int) $summary['ai'] ?> con IA</div>
+      <div class="cs-stat-value"><?= $this->eur($summary['ai_cost']) ?></div>
+    </div>
+  <?php endif ?>
 </div>
 
 <div class="cs-card" data-installations>
@@ -57,6 +63,7 @@ $canOperate = $this->can('operate');
       <option value="attention">Requieren atención</option>
       <option value="outdated">Por actualizar</option>
       <option value="offline">No responden</option>
+      <option value="ai">Con IA</option>
       <?php foreach (Installations::ENVIRONMENTS as $env => $label): ?>
         <option value="env:<?= $env ?>"><?= $this->e($label) ?></option>
       <?php endforeach ?>
@@ -93,6 +100,7 @@ $canOperate = $this->can('operate');
           <th>PHP</th>
           <th>Última copia</th>
           <th class="cs-right">Errores 24 h</th>
+          <th class="cs-right" title="Gasto de este mes del filtrado con IA (y límite mensual)">IA</th>
           <th>Avisos</th>
           <th>Comprobada</th>
         </tr>
@@ -110,6 +118,7 @@ $canOperate = $this->can('operate');
               in_array($row['level'], ['danger', 'warning'], true) ? 'attention' : null,
               $row['outdated'] ? 'outdated' : null,
               $snap !== null && !$online ? 'offline' : null,
+              !empty($d['ai']['enabled']) ? 'ai' : null,
               'env:' . $inst['environment'],
           ]);
           $lastBackup = $d['backups']['last']['created_at'] ?? null;
@@ -141,6 +150,18 @@ $canOperate = $this->can('operate');
             <?php if ($errors === null): ?><span class="cs-muted">—</span>
             <?php elseif ($errors > 0): ?><span class="cs-badge cs-badge-danger"><?= (int) $errors ?></span>
             <?php else: ?><span class="cs-muted">0</span><?php endif ?>
+          </td>
+          <td class="cs-right cs-nowrap">
+            <?php $ai = $d['ai'] ?? null; ?>
+            <?php if (empty($ai['enabled'])): ?><span class="cs-muted" title="<?= $ai === null ? 'Versión sin IA (anterior a la 0.5.0)' : 'IA desactivada' ?>">—</span>
+            <?php else:
+                $tone = ['blocked' => ' cs-badge-danger', 'warn' => ' cs-badge-warning'][$ai['limit_state'] ?? ''] ?? ' cs-badge-primary';
+                $limit = (float) ($ai['monthly_limit_eur'] ?? 0);
+            ?>
+              <span class="cs-badge<?= $tone ?>" title="<?= $this->e(($ai['model'] ?? '') . ' · ' . (int) ($ai['queries'] ?? 0) . ' consultas este mes' . ($limit > 0 ? ' · límite ' . $this->eur($limit) : ' · sin límite')) ?>">
+                <?= $this->icon('sparkles', 'cs-icon-sm') ?> <?= $this->eur((float) ($ai['month_cost_eur'] ?? 0)) ?><?= $limit > 0 ? ' / ' . $this->eur($limit) : '' ?>
+              </span>
+            <?php endif ?>
           </td>
           <td>
             <span class="cs-warn-icons">

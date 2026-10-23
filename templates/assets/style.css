@@ -281,3 +281,9 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   .cs-content { padding: 14px; }
   .cs-user-meta { display: none; }
 }
+
+/* Barra de proporción (gasto de IA respecto al límite) */
+.cs-meter { height: 6px; margin-top: 6px; max-width: 280px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.cs-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--success); }
+.cs-meter-warning > span { background: var(--warning); }
+.cs-meter-danger > span { background: var(--danger); }
