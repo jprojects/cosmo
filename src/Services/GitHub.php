@@ -4,25 +4,29 @@ declare(strict_types=1);
 namespace Cosmo\Services;
 
 /**
- * Versiones de Quasar publicadas en GitHub: etiquetas vX.Y.Z, su CHANGELOG y el ZIP de cada una.
- * Las etiquetas y el CHANGELOG se guardan en caché ('cache_ttl'); los paquetes, para siempre
- * en storage/packages (una etiqueta publicada no cambia).
+ * Versiones de una aplicación (Quasar, Neutron…) publicadas en GitHub: etiquetas vX.Y.Z, su CHANGELOG
+ * y el ZIP de cada una. Las etiquetas y el CHANGELOG se guardan en caché ('cache_ttl'); los paquetes, para
+ * siempre en storage/packages (una etiqueta publicada no cambia).
  */
 final class GitHub
 {
     private const API = 'https://api.github.com';
 
-    public function __construct(private readonly array $config, private readonly string $cacheDir, private readonly string $packagesDir)
-    {
+    public function __construct(
+        private readonly array $config,
+        private readonly string $app,
+        private readonly string $repo,
+        private readonly string $cacheDir,
+        private readonly string $packagesDir,
+    ) {
     }
 
     public function repo(): string
     {
-        $repo = (string) ($this->config['repo'] ?? '');
-        if (!preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~', $repo)) {
-            throw new \RuntimeException("github.repo no válido: '$repo' (formato propietario/repositorio)");
+        if (!preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~', $this->repo)) {
+            throw new \RuntimeException("apps.{$this->app}.repo no válido: '{$this->repo}' (formato propietario/repositorio)");
         }
-        return $repo;
+        return $this->repo;
     }
 
     /**
@@ -119,7 +123,7 @@ final class GitHub
         if ($tag === null) {
             throw new \RuntimeException("La versión $version no está publicada en GitHub");
         }
-        $file = $this->packagesDir . '/quasar-' . $version . '.zip';
+        $file = $this->packagesDir . '/' . $this->app . '-' . $version . '.zip';
         if (!is_file($file)) {
             $tmp = $file . '.' . bin2hex(random_bytes(4)) . '.part';
             try {
@@ -147,8 +151,8 @@ final class GitHub
     public function cachedPackages(): array
     {
         $out = [];
-        foreach (glob($this->packagesDir . '/quasar-*.zip') ?: [] as $f) {
-            if (preg_match('/^quasar-(.+)\.zip$/', basename($f), $m)) {
+        foreach (glob($this->packagesDir . '/' . $this->app . '-*.zip') ?: [] as $f) {
+            if (preg_match('/^' . preg_quote($this->app, '/') . '-(\d.*)\.zip$/', basename($f), $m)) {
                 $out[] = ['version' => $m[1], 'size' => (int) filesize($f)];
             }
         }
@@ -158,7 +162,7 @@ final class GitHub
 
     public function cacheAge(): ?int
     {
-        $file = $this->cacheDir . '/github-tags.json';
+        $file = $this->cacheDir . '/github-' . $this->app . '-tags.json';
         return is_file($file) ? time() - (int) filemtime($file) : null;
     }
 
@@ -166,7 +170,7 @@ final class GitHub
 
     private function cached(string $key, bool $refresh, \Closure $fetch): array
     {
-        $file = $this->cacheDir . '/github-' . $key . '.json';
+        $file = $this->cacheDir . '/github-' . $this->app . '-' . $key . '.json';
         $ttl = (int) ($this->config['cache_ttl'] ?? 600);
         if (!$refresh && is_file($file) && time() - filemtime($file) < $ttl) {
             return (array) json_decode((string) file_get_contents($file), true);
@@ -232,7 +236,8 @@ final class GitHub
             $hint = match ($code) {
                 401 => 'el token de GitHub no es válido o ha caducado',
                 403 => 'límite de peticiones de GitHub o el token no tiene permiso (Contents: read)',
-                404 => $token === '' ? 'el repositorio es privado: configura github.token' : 'el token no tiene acceso al repositorio ' . $this->repo(),
+                404 => $token === '' ? 'el repositorio ' . $this->repo() . ' no existe o es privado: configura github.token'
+                    : 'el repositorio ' . $this->repo() . ' no existe o el token no tiene acceso',
                 default => 'HTTP ' . $code,
             };
             throw new \RuntimeException('GitHub: ' . $hint);

@@ -15,8 +15,9 @@ final class InstallationController extends Controller
     public function show(): void
     {
         $inst = $this->installation();
+        $app = $this->app->apps()->get($inst['app']);
         $githubError = null;
-        $latest = $this->latestVersion($githubError);
+        $latest = $this->latestVersion($app['id'], $githubError);
         $snap = $this->app->monitor()->snapshot($inst['id']);
         $data = Monitor::data($snap);
         $version = $data['version'] ?? null;
@@ -24,9 +25,9 @@ final class InstallationController extends Controller
         $versions = [];
         $changes = [];
         try {
-            $versions = $this->app->github()->versions();
+            $versions = $this->app->apps()->github($app['id'])->versions();
             if ($version !== null && $latest !== null && version_compare($version, $latest, '<')) {
-                $changes = $this->app->github()->changesBetween($version, $latest);
+                $changes = $this->app->apps()->github($app['id'])->changesBetween($version, $latest);
             }
         } catch (\RuntimeException $e) {
             $githubError ??= $e->getMessage();
@@ -37,9 +38,10 @@ final class InstallationController extends Controller
             'icon' => 'server',
             'breadcrumbs' => [['Instalaciones', $this->app->url('home')], [$inst['name'], null]],
             'inst' => $inst,
+            'app' => $app,
             'snap' => $snap,
             'data' => $data,
-            'warnings' => Health::warnings($snap, $latest, (array) ($this->app->config['monitor'] ?? [])),
+            'warnings' => Health::warnings($snap, $app, $latest, (array) ($this->app->config['monitor'] ?? [])),
             'latest' => $latest,
             'versions' => $versions,
             'changes' => $changes,
@@ -96,6 +98,7 @@ final class InstallationController extends Controller
             'title' => $inst ? 'Editar ' . $inst['name'] : 'Nueva instalación',
             'icon' => $inst ? 'pencil' : 'plus',
             'breadcrumbs' => $crumbs,
+            'apps' => $this->app->apps()->all(),
         ];
     }
 
@@ -138,13 +141,16 @@ final class InstallationController extends Controller
         if (!$r->ok && $r->status === 404 && ($r->data['error'] ?? null) !== 'Not Found') {
             $legacy = $this->app->client()->get($probe, $token, 'status-legacy');
             if ($legacy->ok) {
-                $this->app->json(['ok' => true, 'version' => $legacy->data['version'] ?? '?', 'name' => $legacy->data['name'] ?? '', 'ms' => $legacy->ms,
+                // Solo Quasar 0.1.x responde a ?r=status sin tener API remota
+                $this->app->json(['ok' => true, 'app' => 'quasar', 'known' => true, 'app_name' => $this->app->apps()->name('quasar'), 'version' => $legacy->data['version'] ?? '?', 'name' => $legacy->data['name'] ?? '', 'ms' => $legacy->ms,
                     'warning' => 'Versión sin API remota: solo se podrá consultar el estado']);
                 return;
             }
         }
         $this->app->json($r->ok
-            ? ['ok' => true, 'version' => $r->data['version'] ?? '?', 'name' => $r->data['name'] ?? '', 'ms' => $r->ms]
+            ? ['ok' => true, 'app' => $r->data['app'] ?? null, 'app_name' => isset($r->data['app']) ? $this->app->apps()->name((string) $r->data['app']) : null,
+                'known' => isset($r->data['app']) && $this->app->apps()->has((string) $r->data['app']),
+                'version' => $r->data['version'] ?? '?', 'name' => $r->data['name'] ?? '', 'ms' => $r->ms]
             : ['ok' => false, 'error' => $r->error, 'ms' => $r->ms]);
     }
 

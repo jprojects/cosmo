@@ -3,11 +3,14 @@
 /** @var ?array $inst */
 /** @var array $values */
 /** @var array<string,string> $errors */
+/** @var array<string,array> $apps */
 use Cosmo\Services\Installations;
 
 $v = static fn (string $k, mixed $default = '') => $values[$k] ?? $default;
 $err = fn (string $k) => isset($errors[$k]) ? '<span class="cs-error">' . $this->e($errors[$k]) . '</span>' : '';
 $cls = static fn (string $k, string $extra = '') => 'cs-field' . ($extra !== '' ? ' ' . $extra : '') . (isset($errors[$k]) ? ' has-error' : '');
+$appId = (string) $v('app', (string) array_key_first($apps));
+$backupTypes = $apps[$appId]['backups'] ?? reset($apps)['backups'];
 ?>
 <form class="cs-card" method="post" action="<?= $this->url('install-save') ?>" data-install-form data-test-url="<?= $this->url('install-test') ?>">
   <?= $this->csrfField() ?>
@@ -24,11 +27,16 @@ $cls = static fn (string $k, string $extra = '') => 'cs-field' . ($extra !== '' 
         <label for="f-client">Cliente</label>
         <input class="cs-input" id="f-client" name="client" value="<?= $this->e($v('client')) ?>" maxlength="100">
       </div>
-      <div class="<?= $cls('url', 'is-half') ?>">
-        <label for="f-url">URL</label>
-        <input class="cs-input" id="f-url" name="url" value="<?= $this->e($v('url')) ?>" placeholder="https://gestion.cliente.com" required>
-        <span class="cs-help">La dirección donde se abre Quasar (la carpeta de <code>index.php</code>).</span>
-        <?= $err('url') ?>
+      <div class="<?= $cls('app', 'is-half') ?>">
+        <label for="f-app">Aplicación</label>
+        <select class="cs-select" id="f-app" name="app" data-backup-types="<?= $this->json(array_map(static fn ($a) => $a['backups'], $apps)) ?>">
+          <?php foreach ($apps as $a): ?>
+            <option value="<?= $this->e($a['id']) ?>" <?= $appId === $a['id'] ? 'selected' : '' ?>><?= $this->e($a['name']) ?></option>
+          <?php endforeach ?>
+          <?php if (!isset($apps[$appId])): ?><option value="<?= $this->e($appId) ?>" selected><?= $this->e($appId) ?> (ya no está en la configuración)</option><?php endif ?>
+        </select>
+        <span class="cs-help">«Probar conexión» la detecta.</span>
+        <?= $err('app') ?>
       </div>
       <div class="<?= $cls('environment', 'is-half') ?>">
         <label for="f-env">Entorno</label>
@@ -38,6 +46,12 @@ $cls = static fn (string $k, string $extra = '') => 'cs-field' . ($extra !== '' 
           <?php endforeach ?>
         </select>
       </div>
+      <div class="<?= $cls('url') ?>">
+        <label for="f-url">URL</label>
+        <input class="cs-input" id="f-url" name="url" value="<?= $this->e($v('url')) ?>" placeholder="https://gestion.cliente.com" required>
+        <span class="cs-help">La dirección donde se abre la aplicación (la carpeta de <code>index.php</code>).</span>
+        <?= $err('url') ?>
+      </div>
       <div class="<?= $cls('token') ?>">
         <label for="f-token">Token</label>
         <div class="cs-input-group">
@@ -46,11 +60,11 @@ $cls = static fn (string $k, string $extra = '') => 'cs-field' . ($extra !== '' 
           <button class="cs-btn" type="button" data-generate-token title="Generar uno nuevo"><?= $this->icon('key-round') ?> Generar</button>
           <button class="cs-btn" type="button" data-test-connection><?= $this->icon('play') ?> Probar conexión</button>
         </div>
-        <span class="cs-help">El mismo valor que <code>remote.token</code> del <code>config/config.local.php</code> de esa instalación. Se guarda cifrado.</span>
+        <span class="cs-help">El mismo valor que <code>remote.token</code> del <code>config.local.php</code> de esa instalación (en Quasar, <code>config/config.local.php</code>). Se guarda cifrado.</span>
         <?= $err('token') ?>
         <div class="cs-test-result" data-test-result></div>
         <div class="cs-snippet" data-token-snippet hidden>
-          <p class="cs-help">Añade esto al <code>config/config.local.php</code> de la instalación:</p>
+          <p class="cs-help">Añade esto al <code>config.local.php</code> de la instalación:</p>
           <pre data-snippet-text></pre>
         </div>
       </div>
@@ -71,10 +85,11 @@ $cls = static fn (string $k, string $extra = '') => 'cs-field' . ($extra !== '' 
       <div class="<?= $cls('backup_type', 'is-third') ?>">
         <label for="f-btype">Tipo</label>
         <select class="cs-select" id="f-btype" name="backup_type">
-          <?php foreach (['full' => 'Completa (BD + ficheros)', 'db' => 'Solo base de datos', 'files' => 'Solo ficheros'] as $key => $label): ?>
+          <?php foreach ($backupTypes as $key => $label): ?>
             <option value="<?= $key ?>" <?= $v('backup_type', 'full') === $key ? 'selected' : '' ?>><?= $this->e($label) ?></option>
           <?php endforeach ?>
         </select>
+        <?= $err('backup_type') ?>
       </div>
       <div class="<?= $cls('backup_hour', 'is-third') ?>">
         <label for="f-hour">A partir de las</label>

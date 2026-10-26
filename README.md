@@ -1,22 +1,28 @@
 # Cosmo
 
-Panel central para controlar las instalaciones de **Quasar**: ver en qué versión está cada una y cómo
-están, actualizarlas desde GitHub, hacer y guardar copias de seguridad y saber quién hizo qué.
+Panel central para controlar las instalaciones de **Quasar**, **Neutron** y las aplicaciones que vengan: ver
+en qué versión está cada una y cómo están, actualizarlas desde GitHub, hacer y guardar copias de seguridad y
+saber quién hizo qué.
 
 PHP 8.1+ sin dependencias y **sin base de datos**: los datos son ficheros JSON en `storage/`.
-Habla con cada Quasar por su API remota (`?r=remote`, Quasar 0.2.0 o superior).
+Habla con cada instalación por su API remota (`?r=remote`): la definió Quasar (0.2.0 o superior) y Neutron
+(1.0.0 o superior) la replica con las mismas acciones y respuestas.
 
 ## Qué hace
 
-- **Panel de instalaciones**: estado (responde / caída), versión y si hay una más nueva, PHP, última copia,
-  errores del log en 24 h y avisos. Búsqueda, filtros y operaciones sobre varias a la vez
-  (actualizar, copia, comprobar).
+- **Panel de instalaciones**: aplicación y versión (y si hay una más nueva de esa aplicación), estado
+  (responde / caída), PHP, última copia, errores del log en 24 h y avisos. Búsqueda, filtros (también por
+  aplicación) y operaciones sobre varias a la vez (actualizar cada una a la última de su aplicación, copia,
+  comprobar).
 - **Avisos de salud** por instalación: caída, BD sin conexión, modo mantenimiento, `debug` activado, sin HTTPS,
   correo en modo `log`, errores en el log, sin copias o copias antiguas, ficheros del núcleo cambiados a mano,
-  poco disco, sin permiso de escritura, extensiones que faltan, PHP sin soporte, reloj desfasado.
+  poco disco, sin permiso de escritura, extensiones que faltan, PHP sin soporte, reloj desfasado. En Neutron,
+  además: formulario sin reCAPTCHA, sin contraseña del editor y `site/` sin permiso de escritura. Si una
+  instalación responde como otra aplicación distinta de la dada de alta, se avisa y no se actualiza.
 - **Actualizaciones** desde las etiquetas `vX.Y.Z` de GitHub, con el CHANGELOG de lo que cambia. Copia previa,
   mantenimiento, autoprueba con vuelta atrás automática, migración de BD y comprobación final.
-- **Copias de seguridad** completas, de BD o de ficheros: se crean en la instalación y se pueden descargar o
+- **Copias de seguridad** de los tipos de cada aplicación (Quasar: completa, BD o ficheros; Neutron: completa o
+  solo el contenido de `site/`): se crean en la instalación y se pueden descargar o
   guardar en Cosmo (segunda ubicación, con sha256 verificado). Copias programadas diarias o semanales.
 - **Filtrado con IA** (Quasar 0.5.0+): si cada instalación lo tiene activado, modelo, gasto del mes respecto a su
   límite, consultas y errores. Total del mes en el panel, filtro «Con IA» y avisos al 80 % y al agotar el límite.
@@ -51,14 +57,22 @@ Comprobaciones y copias programadas:
 
 `--check` solo comprueba, `--backups` solo hace las copias programadas. Nunca corren dos a la vez.
 
-### GitHub
+### Aplicaciones y GitHub
 
-El repositorio de Quasar es privado: crea un token *fine-grained* con acceso solo a ese repositorio y
-permiso **Contents: Read-only**, y ponlo en `config.local.php`:
+Las aplicaciones que se pueden dar de alta están en `apps` (`config/config.php`): nombre, repositorio de GitHub,
+primera versión con API remota (`min_version`) y tipos de copia (`backups`). La clave es el identificador que
+la aplicación devuelve en su estado (`"app": "neutron"`). Para añadir una nueva basta con una entrada más,
+siempre que su API remota replique la de Quasar.
+
+Si los repositorios son privados, crea un token *fine-grained* con acceso a ellos y permiso
+**Contents: Read-only**, y ponlo en `config.local.php`:
 
 ```php
-'github' => ['repo' => 'jprojects/quasar', 'token' => 'github_pat_…'],
+'github' => ['token' => 'github_pat_…'],
+'apps' => ['neutron' => ['repo' => 'otra-cuenta/neutron']],   // solo si cambia algo de config.php
 ```
+
+(El antiguo `github.repo` se sigue respetando como repositorio de Quasar.)
 
 Las etiquetas y el CHANGELOG se guardan 10 minutos en caché (`github.cache_ttl`); los paquetes descargados
 se guardan en `storage/packages` (una etiqueta publicada no cambia).
@@ -88,15 +102,17 @@ Tras `login_max_attempts` fallos (por usuario o por IP) el acceso se bloquea `lo
 
 ## Dar de alta una instalación
 
-1. En el Quasar, en `config/config.local.php` (el botón **Generar** del formulario de Cosmo crea un token y
-   enseña el fragmento a pegar):
+1. En la instalación, en su `config.local.php` (`config/config.local.php` en Quasar; el botón **Generar** del
+   formulario de Cosmo crea un token y enseña el fragmento a pegar):
 
    ```php
    'remote' => ['token' => '…64 caracteres…', 'allow_ips' => ['IP del servidor de Cosmo']],
    ```
 
-2. En Cosmo: **Nueva instalación**, con la URL donde se abre Quasar y el mismo token. **Probar conexión**
-   lo comprueba sin guardar.
+2. En Cosmo: **Nueva instalación**, con la aplicación, la URL donde se abre y el mismo token. **Probar
+   conexión** lo comprueba sin guardar y elige la aplicación que detecta.
+
+Las instalaciones dadas de alta antes de que hubiera varias aplicaciones son de Quasar.
 
 Las instalaciones con Quasar 0.1.x se ven (versión y estado básico), pero para copias y actualizaciones hay
 que subirlas a mano a la 0.2.0 la primera vez.
@@ -106,11 +122,12 @@ que subirlas a mano a la 0.2.0 la primera vez.
 Desde la ficha (o varias a la vez desde el panel), Cosmo:
 
 1. Pide el estado y comprueba que la versión destino tiene sentido (no es la misma, no es anterior salvo que
-   se permita, no baja de la 0.2.0, el paquete cabe en el `upload_max_filesize` del hosting).
-2. Descarga de GitHub el ZIP de la etiqueta y comprueba que su `VERSION` coincide.
+   se permita, no baja de su `min_version`, la instalación es de la aplicación dada de alta, el paquete cabe
+   en el `upload_max_filesize` del hosting).
+2. Descarga de GitHub el ZIP de la etiqueta del repositorio de su aplicación y comprueba que su `VERSION` coincide.
 3. Lo sube a la instalación, que hace la copia previa, entra en mantenimiento, copia solo los ficheros del
-   núcleo (`core.json` de Quasar), se autoprueba y, si la versión nueva no arranca, lo deshace todo.
-4. Pide la migración de la BD (con el código nuevo) y la instalación sale del mantenimiento.
+   núcleo (su `core.json`), se autoprueba y, si la versión nueva no arranca, lo deshace todo.
+4. Pide la migración (BD en Quasar; carpetas de datos en Neutron) y la instalación sale del mantenimiento.
 5. Vuelve a comprobar el estado y confirma la versión.
 
 Si la migración falla, la instalación se queda en mantenimiento y la ficha ofrece **Reintentar migración**.
@@ -123,13 +140,13 @@ config/            config.php (+ config.local.php: clave, usuarios, token de Git
 bin/               setup.php · hash-password.php · cron.php
 public/index.php   único punto de entrada
 src/Core/          App (rutas), Auth, Session, View, Store (JSON), Crypto, Log
-src/Services/      Installations, QuasarClient, GitHub, Monitor, Health, Operations, LocalBackups, Activity, Notifier
+src/Services/      Apps, Installations, QuasarClient, GitHub, Monitor, Health, Operations, LocalBackups, Activity, Notifier
 src/Controllers/   una clase por pantalla
 templates/         plantillas PHP, assets/ (CSS y JS sin dependencias) e icons.php (Lucide)
 storage/data/      installations.json (tokens cifrados), status/, history/, activity.jsonl, schedule.json
 storage/backups/   copias guardadas en Cosmo, por instalación
-storage/packages/  ZIP de cada versión de Quasar
-storage/cache/     etiquetas y CHANGELOG de GitHub
+storage/packages/  ZIP de cada versión ({aplicación}-X.Y.Z.zip)
+storage/cache/     etiquetas y CHANGELOG de GitHub, por aplicación
 storage/logs/      log de Cosmo
 ```
 
@@ -155,4 +172,4 @@ return [
 - Las peticiones a las instalaciones verifican el certificado SSL (se puede desactivar por instalación) y no
   siguen redirecciones.
 - Cabeceras de seguridad y CSP estricta (sin scripts en línea).
-- Restringe la API de cada Quasar a la IP de Cosmo con `remote.allow_ips`.
+- Restringe la API de cada instalación a la IP de Cosmo con `remote.allow_ips`.

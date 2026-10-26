@@ -14,7 +14,7 @@ final class Operations
     public function __construct(
         private readonly Installations $installations,
         private readonly QuasarClient $client,
-        private readonly GitHub $github,
+        private readonly Apps $apps,
         private readonly Monitor $monitor,
         private readonly Activity $activity,
         private readonly LocalBackups $local,
@@ -35,7 +35,8 @@ final class Operations
             return ['ok' => false, 'steps' => $steps, 'backup' => null];
         }
         $backup = $r->data['backup'];
-        $steps[] = ['ok' => true, 'text' => sprintf('Copia %s creada: %s (%s s)', $type, self::bytes((int) $backup['size']), $backup['seconds'] ?? '?')];
+        $typeName = mb_strtolower($this->apps->get($inst['app'])['backups'][$type] ?? $type);
+        $steps[] = ['ok' => true, 'text' => sprintf('Copia (%s) creada: %s (%s s)', $typeName, self::bytes((int) $backup['size']), $backup['seconds'] ?? '?')];
         $this->activity->log($user, 'backup.create', $inst['id'], true, $backup['file'], ['type' => $type, 'size' => $backup['size']]);
 
         $ok = true;
@@ -85,6 +86,7 @@ final class Operations
             return ['ok' => $ok, 'steps' => $steps, 'from' => $from, 'to' => $version];
         };
 
+        $app = $this->apps->get($inst['app']);
         $token = $this->installations->token($inst);
         $status = $this->client->get($inst, $token, 'status');
         if (!$status->ok) {
@@ -97,6 +99,10 @@ final class Operations
             $steps[] = ['ok' => false, 'text' => "La versión $from no tiene API remota: actualízala a mano la primera vez"];
             return $done(false, $from);
         }
+        if (isset($d['app']) && $d['app'] !== $app['id']) {
+            $steps[] = ['ok' => false, 'text' => 'Responde como ' . $this->apps->name((string) $d['app']) . ', pero está dada de alta como ' . $app['name'] . ': corrige la aplicación en la ficha'];
+            return $done(false, $from);
+        }
         if (version_compare($version, $from, '==')) {
             $steps[] = ['ok' => false, 'text' => "Ya está en la versión $version"];
             return $done(false, $from);
@@ -105,14 +111,14 @@ final class Operations
             $steps[] = ['ok' => false, 'text' => "La $version es anterior a la instalada ($from): marca «permitir volver atrás» si es lo que quieres"];
             return $done(false, $from);
         }
-        if (version_compare($version, '0.2.0', '<')) {
-            $steps[] = ['ok' => false, 'text' => 'Las versiones anteriores a la 0.2.0 no tienen API remota: la instalación quedaría fuera de Cosmo'];
+        if (version_compare($version, $app['min_version'], '<')) {
+            $steps[] = ['ok' => false, 'text' => "Las versiones de {$app['name']} anteriores a la {$app['min_version']} no tienen API remota: la instalación quedaría fuera de Cosmo"];
             return $done(false, $from);
         }
-        $steps[] = ['ok' => true, 'text' => "Instalada: $from · PHP " . ($d['php'] ?? '?')];
+        $steps[] = ['ok' => true, 'text' => "Instalada: {$app['name']} $from · PHP " . ($d['php'] ?? '?')];
 
         try {
-            $pkg = $this->github->package($version);
+            $pkg = $this->apps->github($app['id'])->package($version);
         } catch (\RuntimeException $e) {
             $steps[] = ['ok' => false, 'text' => 'Paquete: ' . $e->getMessage()];
             return $done(false, $from);
@@ -157,7 +163,7 @@ final class Operations
             $this->monitor->check([$inst['id']], $user);
             return $done(false, $from);
         }
-        $steps[] = ['ok' => true, 'text' => 'Base de datos: ' . ($m->data['steps'] ? implode(', ', $m->data['steps']) : 'al día') . ' · mantenimiento desactivado'];
+        $steps[] = ['ok' => true, 'text' => 'Migración: ' . ($m->data['steps'] ? implode(', ', $m->data['steps']) : 'al día') . ' · mantenimiento desactivado'];
 
         $after = $this->monitor->check([$inst['id']], $user)[$inst['id']] ?? null;
         $now = $after['data']['version'] ?? null;

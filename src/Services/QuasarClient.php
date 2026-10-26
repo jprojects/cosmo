@@ -4,7 +4,8 @@ declare(strict_types=1);
 namespace Cosmo\Services;
 
 /**
- * Habla con la API remota de cada Quasar: index.php?r=remote&a=acción, cabecera X-Quasar-Token.
+ * Habla con la API remota de cada instalación: index.php?r=remote&a=acción, cabecera X-Quasar-Token.
+ * La definió Quasar y la replican las demás aplicaciones (Neutron…), con las mismas acciones y respuestas.
  *
  * Todas las llamadas devuelven un Response; nunca lanzan por errores de red o HTTP.
  */

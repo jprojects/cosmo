@@ -14,7 +14,11 @@ final class UpdateController extends Controller
         $inst = $this->installation();
         $version = $this->str('version');
         if ($version === 'latest') {
-            $version = (string) $this->latestVersion();
+            $error = null;
+            $version = (string) $this->latestVersion($inst['app'], $error);
+            if ($version === '') {
+                throw new HttpException(409, $error ?? 'No hay ninguna versión publicada de ' . $this->app->apps()->name($inst['app']));
+            }
         }
         if (!preg_match('/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/', $version)) {
             throw new HttpException(400, 'Versión no válida');

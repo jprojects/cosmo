@@ -84,7 +84,7 @@ while (mb_strlen($password) < 10) {
 }
 $github = (string) ($opts['github-token'] ?? '');
 if (!isset($opts['github-token'])) {
-    $github = ask('  Token de GitHub para leer el repositorio de Quasar (Enter para ponerlo luego): ');
+    $github = ask('  Token de GitHub para leer los repositorios de las aplicaciones (Enter para ponerlo luego): ');
 }
 
 $config = [

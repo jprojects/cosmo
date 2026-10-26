@@ -11,53 +11,71 @@ final class DashboardController extends Controller
 {
     public function index(): void
     {
-        $githubError = null;
-        $latest = $this->latestVersion($githubError);
         $monitorConfig = (array) ($this->app->config['monitor'] ?? []);
         $snapshots = $this->app->monitor()->snapshots();
+        $installations = $this->app->installations()->all();
+
+        // Última versión de cada aplicación con alguna instalación (no se consulta GitHub por las demás)
+        $latest = [];
+        $githubErrors = [];
+        foreach (array_unique(array_column($installations, 'app')) as $appId) {
+            $error = null;
+            $latest[$appId] = $this->latestVersion($appId, $error);
+            if ($error !== null) {
+                $githubErrors[$this->app->apps()->name($appId)] = $error;
+            }
+        }
 
         $rows = [];
         $summary = ['total' => 0, 'online' => 0, 'offline' => 0, 'outdated' => 0, 'attention' => 0, 'versions' => [], 'ai' => 0, 'ai_cost' => 0.0];
-        foreach ($this->app->installations()->all() as $id => $inst) {
+        foreach ($installations as $id => $inst) {
+            $app = $this->app->apps()->get($inst['app']);
             $snap = $snapshots[$id] ?? null;
             $data = Monitor::data($snap);
-            $warnings = Health::warnings($snap, $latest, $monitorConfig);
+            $warnings = Health::warnings($snap, $app, $latest[$app['id']], $monitorConfig);
             $version = $data['version'] ?? null;
+            $outdated = $version !== null && $latest[$app['id']] !== null && version_compare($version, $latest[$app['id']], '<');
             $rows[] = [
                 'inst' => $inst,
+                'app' => $app,
+                'latest' => $latest[$app['id']],
                 'snap' => $snap,
                 'data' => $data,
                 'warnings' => $warnings,
                 'level' => Health::worst($warnings),
-                'outdated' => $version !== null && $latest !== null && version_compare($version, $latest, '<'),
+                'outdated' => $outdated,
             ];
             $summary['total']++;
             if ($snap !== null) {
                 $snap['ok'] ? $summary['online']++ : $summary['offline']++;
             }
-            if ($version !== null && $latest !== null && version_compare($version, $latest, '<')) {
+            if ($outdated) {
                 $summary['outdated']++;
             }
             if (in_array(Health::worst($warnings), ['danger', 'warning'], true)) {
                 $summary['attention']++;
             }
             if ($version !== null) {
-                $summary['versions'][$version] = ($summary['versions'][$version] ?? 0) + 1;
+                $summary['versions'][$app['id']][$version] = ($summary['versions'][$app['id']][$version] ?? 0) + 1;
             }
             if (!empty($data['ai']['enabled'])) {
                 $summary['ai']++;
                 $summary['ai_cost'] += (float) ($data['ai']['month_cost_eur'] ?? 0);
             }
         }
-        uksort($summary['versions'], static fn ($a, $b) => version_compare((string) $b, (string) $a));
+        foreach ($summary['versions'] as &$byVersion) {
+            uksort($byVersion, static fn ($a, $b) => version_compare((string) $b, (string) $a));
+        }
+        unset($byVersion);
 
         $this->render('dashboard', [
             'title' => 'Instalaciones',
             'icon' => 'server',
             'rows' => $rows,
             'summary' => $summary,
+            'apps' => $this->app->apps()->all(),
             'latest' => $latest,
-            'githubError' => $githubError,
+            'githubErrors' => $githubErrors,
             'lastCheck' => $snapshots ? max(array_column($snapshots, 'checked_at')) : null,
         ]);
     }

@@ -29,7 +29,7 @@ final class Activity
         'backup.download' => 'Copia descargada',
         'backup.local-delete' => 'Copia local borrada',
         'update' => 'Actualización',
-        'migrate' => 'Migración de BD',
+        'migrate' => 'Migración',
         'maintenance.on' => 'Mantenimiento activado',
         'maintenance.off' => 'Mantenimiento desactivado',
         'releases.refresh' => 'Versiones recargadas',

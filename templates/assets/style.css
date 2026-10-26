@@ -164,6 +164,13 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 
 /* ------------------------------------------------------------------ tablas */
 
+/* pestañas (una por aplicación) */
+.cs-tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 14px; overflow-x: auto; }
+.cs-tabs a { padding: 7px 14px; color: var(--text-muted); text-decoration: none; font-weight: 550; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.cs-tabs a:hover { color: var(--text); }
+.cs-tabs a.is-active { color: var(--text); border-bottom-color: var(--primary); }
+.cs-tabs .cs-badge { margin-left: 4px; }
+
 .cs-toolbar { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .cs-toolbar .cs-input { max-width: 280px; }
 .cs-toolbar .cs-select, .cs-card-head .cs-select { width: auto; }

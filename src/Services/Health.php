@@ -15,8 +15,11 @@ final class Health
         '8.2' => '2026-12-31', '8.3' => '2027-12-31', '8.4' => '2028-12-31', '8.5' => '2029-12-31',
     ];
 
-    /** @return list<array{level:string,text:string}> */
-    public static function warnings(?array $snapshot, ?string $latest, array $monitor): array
+    /**
+     * @param array $app definición de la aplicación (Apps::get)
+     * @return list<array{level:string,text:string}>
+     */
+    public static function warnings(?array $snapshot, array $app, ?string $latest, array $monitor): array
     {
         $w = [];
         $add = static function (string $level, string $text) use (&$w): void {
@@ -35,8 +38,12 @@ final class Health
             return $w;
         }
 
+        if (isset($d['app']) && $d['app'] !== $app['id']) {
+            $add('danger', 'Responde como ' . ucfirst((string) $d['app']) . ', pero está dada de alta como ' . $app['name'] . ': edítala y corrige la aplicación');
+            $latest = null; // las versiones de una no dicen nada de la otra
+        }
         if (!isset($d['api'])) {
-            $add('warning', 'Versión sin API remota: actualízala a mano a la 0.2.0 o superior para poder hacer copias y actualizaciones desde Cosmo');
+            $add('warning', "Versión sin API remota: actualízala a mano a la {$app['min_version']} o superior para poder hacer copias y actualizaciones desde Cosmo");
         }
         $version = (string) ($d['version'] ?? '0.0.0');
         if ($latest !== null && version_compare($version, $latest, '<')) {
@@ -86,7 +93,17 @@ final class Health
             $add('warning', 'Poco espacio libre en disco: ' . round($free / 1048576) . ' MB');
         }
         if (isset($d['server']['writable']) && !$d['server']['writable']) {
-            $add('warning', 'PHP no puede escribir en src/ o public/: las actualizaciones remotas fallarán');
+            $add('warning', 'PHP no puede escribir en los ficheros del núcleo: las actualizaciones remotas fallarán');
+        }
+        // Neutron: el contenido se edita en la propia web (site/)
+        if (isset($d['server']['site_writable']) && !$d['server']['site_writable']) {
+            $add('warning', 'PHP no puede escribir en site/: no se podrá guardar el contenido desde el editor');
+        }
+        if (isset($d['config']['admin_password']) && !$d['config']['admin_password']) {
+            $add('warning', 'Sin contraseña del editor (admin_password_hash): nadie puede editar el contenido');
+        }
+        if (!empty($d['recaptcha']['missing'])) {
+            $add('warning', 'Formulario de contacto sin reCAPTCHA: pon las claves en recaptcha del config.local.php');
         }
         foreach (['zip' => 'copias y actualizaciones', 'pdo_mysql' => 'base de datos', 'fileinfo' => 'subida de archivos'] as $ext => $for) {
             if (isset($d['extensions'][$ext]) && !$d['extensions'][$ext]) {

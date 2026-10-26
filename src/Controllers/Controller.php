@@ -43,11 +43,11 @@ abstract class Controller
         return is_string($v) ? trim($v) : $default;
     }
 
-    /** Última versión publicada, o null si GitHub no responde (el error va en $error). */
-    protected function latestVersion(?string &$error = null): ?string
+    /** Última versión publicada de la aplicación, o null si GitHub no responde (el error va en $error). */
+    protected function latestVersion(string $app, ?string &$error = null): ?string
     {
         try {
-            return $this->app->github()->latest();
+            return $this->app->apps()->github($app)->latest();
         } catch (\RuntimeException $e) {
             $error = $e->getMessage();
             return null;

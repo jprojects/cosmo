@@ -24,12 +24,16 @@ final class BackupController extends Controller
         ]);
     }
 
-    /** POST JSON: type=full|db|files, pull=1 para guardarla también en Cosmo */
+    /** POST JSON: type (uno de los 'backups' de su aplicación), pull=1 para guardarla también en Cosmo */
     public function create(): void
     {
         $this->requirePost();
         $inst = $this->installation();
-        $type = in_array($this->str('type'), ['full', 'db', 'files'], true) ? $this->str('type') : 'full';
+        $app = $this->app->apps()->get($inst['app']);
+        $type = $this->str('type', 'full');
+        if (!isset($app['backups'][$type])) {
+            throw new HttpException(400, $app['name'] . ' no tiene copias de tipo ' . $type);
+        }
         $user = $this->user();
         $this->longTask();
         $result = $this->app->operations()->backup($inst, $type, $this->str('pull') === '1', $user->username, 'Manual · ' . $user->name);

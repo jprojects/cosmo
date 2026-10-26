@@ -177,13 +177,19 @@
       }
 
       const noApi = targets.filter((t) => t.dataset.api !== '1');
-      const title = op === 'update' ? `Actualizar ${targets.length} a la ${b.dataset.version}` : `Copia ${b.dataset.type === 'db' ? 'de base de datos' : 'completa'} de ${targets.length}`;
+      // Al actualizar a la última, cada una va a la de su aplicación: las que ya la tienen se saltan
+      const upToDate = op === 'update' ? targets.filter((t) => t.dataset.api === '1' && t.dataset.outdated !== '1') : [];
+      const skip = (t) => t.dataset.api !== '1' || upToDate.includes(t);
+      const title = op === 'update'
+        ? `Actualizar ${targets.length - upToDate.length} a la ${b.dataset.version === 'latest' ? 'última versión' : b.dataset.version}`
+        : `Copia ${b.dataset.type === 'db' ? 'de datos' : 'completa'} de ${targets.length}`;
       $('[data-bulk-title]', dlg).textContent = title;
       $('[data-bulk-options]', dlg).innerHTML = (op === 'update'
         ? `<label class="cs-check"><input type="checkbox" data-opt-backup checked> Copia completa antes de cada actualización</label>
            <p class="cs-small cs-muted">Se actualizan de una en una; si una falla, se sigue con la siguiente.</p>`
         : `<label class="cs-check"><input type="checkbox" data-opt-pull checked> Guardar también en Cosmo</label>`)
-        + (noApi.length ? `<p class="cs-small cs-c-warning">${noApi.length} se saltarán (no responden o no tienen API remota): ${esc(noApi.map((t) => t.dataset.name).join(', '))}</p>` : '');
+        + (noApi.length ? `<p class="cs-small cs-c-warning">${noApi.length} se saltarán (no responden o no tienen API remota): ${esc(noApi.map((t) => t.dataset.name).join(', '))}</p>` : '')
+        + (upToDate.length ? `<p class="cs-small cs-muted">${upToDate.length} ya están al día: ${esc(upToDate.map((t) => t.dataset.name).join(', '))}</p>` : '');
       const log = $('[data-bulk-log]', dlg);
       log.innerHTML = '';
       const run = $('[data-bulk-run]', dlg);
@@ -200,7 +206,7 @@
         const pull = $('[data-opt-pull]', dlg)?.checked;
         let okCount = 0;
         for (const t of targets) {
-          if (t.dataset.api !== '1') continue;
+          if (skip(t)) continue;
           const li = document.createElement('li');
           li.innerHTML = `${icon('loader-circle', 'cs-spin')}<span><strong>${esc(t.dataset.name)}</strong> · en curso…</span>`;
           log.appendChild(li);
@@ -215,7 +221,7 @@
             li.innerHTML = `${icon('circle-x', 'cs-c-danger')}<span><strong>${esc(t.dataset.name)}</strong> · ${esc(err.message)}</span>`;
           }
         }
-        const total = targets.length - noApi.length;
+        const total = targets.filter((t) => !skip(t)).length;
         const li = document.createElement('li');
         li.innerHTML = `<strong>Terminado: ${okCount} de ${total} correctas</strong>`;
         log.appendChild(li);
@@ -252,7 +258,7 @@
 
     // Copias
     const box = $('[data-backups]');
-    const typeLabel = { full: 'Completa', db: 'BD', files: 'Ficheros' };
+    const typeLabel = JSON.parse(page.dataset.backupTypes || '{}');
     const loadBackups = async () => {
       if (!box) return;
       try {
@@ -429,6 +435,17 @@
   const form = $('[data-install-form]');
   if (form) {
     const tokenInput = $('#f-token', form);
+    const appSelect = $('#f-app', form);
+    const typeSelect = $('#f-btype', form);
+    // Los tipos de copia programada dependen de la aplicación
+    const syncBackupTypes = () => {
+      const types = JSON.parse(appSelect.dataset.backupTypes || '{}')[appSelect.value];
+      if (!types) return;
+      const current = typeSelect.value;
+      typeSelect.innerHTML = Object.entries(types).map(([k, label]) => `<option value="${esc(k)}">${esc(label)}</option>`).join('');
+      typeSelect.value = types[current] ? current : Object.keys(types)[0];
+    };
+    appSelect.addEventListener('change', syncBackupTypes);
     const snippet = $('[data-token-snippet]', form);
     const result = $('[data-test-result]', form);
     const showSnippet = () => {
@@ -454,8 +471,18 @@
           token: tokenInput.value,
           verify_ssl: form.elements.verify_ssl.checked ? '1' : '',
         });
+        let notice = r.warning || '';
+        if (r.ok && r.app && r.app !== appSelect.value) {
+          if (r.known) {
+            appSelect.value = r.app;
+            syncBackupTypes();
+            notice = `Es ${r.app_name}: aplicación cambiada. ${notice}`;
+          } else {
+            notice = `Responde como «${r.app}», que no está en la configuración de Cosmo (apps). ${notice}`;
+          }
+        }
         result.innerHTML = r.ok
-          ? `<span class="cs-c-success">${icon('circle-check')} Responde: ${esc(r.name)} · Quasar ${esc(r.version)} · ${r.ms} ms</span>${r.warning ? `<div class="cs-c-warning">${esc(r.warning)}</div>` : ''}`
+          ? `<span class="cs-c-success">${icon('circle-check')} Responde: ${esc(r.name)} · ${esc(r.app_name || '')} ${esc(r.version)} · ${r.ms} ms</span>${notice ? `<div class="cs-c-warning">${esc(notice.trim())}</div>` : ''}`
           : `<span class="cs-c-danger">${icon('circle-x')} ${esc(r.error)}</span>`;
       } catch (err) {
         result.innerHTML = `<span class="cs-c-danger">${icon('circle-x')} ${esc(err.message)}</span>`;

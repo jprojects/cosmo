@@ -1,14 +1,17 @@
 <?php
 /** @var \Cosmo\Core\View $this */
-/** @var list<array{inst:array,snap:?array,data:?array,warnings:list<array>,level:string,outdated:bool}> $rows */
+/** @var list<array{inst:array,app:array,latest:?string,snap:?array,data:?array,warnings:list<array>,level:string,outdated:bool}> $rows */
 /** @var array $summary */
-/** @var ?string $latest */
-/** @var ?string $githubError */
+/** @var array<string,array> $apps */
+/** @var array<string,?string> $latest última versión por aplicación (solo las que tienen instalaciones) */
+/** @var array<string,string> $githubErrors nombre de la aplicación => error */
 /** @var ?string $lastCheck */
 use Cosmo\Services\Installations;
 
 $levelIcon = ['danger' => 'circle-alert', 'warning' => 'triangle-alert', 'info' => 'info'];
 $canOperate = $this->can('operate');
+$appsInUse = array_keys($latest);
+$showAi = (bool) array_filter($rows, static fn ($r) => isset($r['data']['ai']));
 ?>
 <?php $this->slot('actions') ?>
   <?php if ($canOperate && $rows): ?>
@@ -21,21 +24,25 @@ $canOperate = $this->can('operate');
     <a class="cs-btn cs-btn-primary" href="<?= $this->url('install-edit') ?>"><?= $this->icon('plus') ?> Nueva instalación</a>
   <?php endif ?>
 <?php $this->endSlot() ?>
-<?php $this->slot('subtitle') ?>
-  <?php if ($latest): ?>Última versión de Quasar: <a href="<?= $this->url('releases') ?>"><strong><?= $this->e($latest) ?></strong></a><?php else: ?>Sin datos de GitHub<?php endif ?>
+<?php if ($rows): $this->slot('subtitle') ?>
+  <?php $known = array_filter($latest); ?>
+  <?php if ($known): ?>Última versión:
+    <?= implode(' · ', array_map(fn ($appId, $v) => '<a href="' . $this->url('releases', ['app' => $appId]) . '">'
+        . $this->e($apps[$appId]['name'] ?? $appId) . ' <strong>' . $this->e($v) . '</strong></a>', array_keys($known), $known)) ?>
+  <?php else: ?>Sin datos de GitHub<?php endif ?>
   · comprobadas <?= $this->time($lastCheck) ?>
-<?php $this->endSlot() ?>
+<?php $this->endSlot(); endif ?>
 
-<?php if ($githubError): ?>
-  <div class="cs-flash cs-flash-warning"><?= $this->icon('triangle-alert') ?> <span>No se pueden consultar las versiones de GitHub: <?= $this->e($githubError) ?></span></div>
-<?php endif ?>
+<?php foreach ($githubErrors as $appName => $githubError): ?>
+  <div class="cs-flash cs-flash-warning"><?= $this->icon('triangle-alert') ?> <span>No se pueden consultar las versiones de <?= $this->e($appName) ?>: <?= $this->e($githubError) ?></span></div>
+<?php endforeach ?>
 
 <?php if (!$rows): ?>
   <div class="cs-card">
     <div class="cs-empty">
       <?= $this->icon('server') ?>
       <h2>Aún no hay instalaciones</h2>
-      <p>Activa <code>remote.token</code> en el <code>config.local.php</code> de un Quasar y dalo de alta aquí.</p>
+      <p>Activa <code>remote.token</code> en el <code>config.local.php</code> de una instalación (<?= $this->e(implode(', ', array_column($apps, 'name'))) ?>) y dala de alta aquí.</p>
       <?php if ($this->can('manage')): ?><p><a class="cs-btn cs-btn-primary" href="<?= $this->url('install-edit') ?>"><?= $this->icon('plus') ?> Nueva instalación</a></p><?php endif ?>
     </div>
   </div>
@@ -47,7 +54,7 @@ $canOperate = $this->can('operate');
   <div class="cs-stat<?= $summary['offline'] ? ' is-danger' : '' ?>"><div class="cs-stat-label"><?= $this->icon('wifi-off', 'cs-icon-sm') ?> No responden</div><div class="cs-stat-value"><?= $summary['offline'] ?></div></div>
   <div class="cs-stat<?= $summary['outdated'] ? ' is-warning' : '' ?>"><div class="cs-stat-label"><?= $this->icon('circle-arrow-up', 'cs-icon-sm') ?> Por actualizar</div><div class="cs-stat-value"><?= $summary['outdated'] ?></div></div>
   <div class="cs-stat<?= $summary['attention'] ? ' is-warning' : '' ?>"><div class="cs-stat-label"><?= $this->icon('triangle-alert', 'cs-icon-sm') ?> Requieren atención</div><div class="cs-stat-value"><?= $summary['attention'] ?></div></div>
-  <?php if ($summary['ai']): ?>
+  <?php if ($showAi && $summary['ai']): ?>
     <div class="cs-stat" title="Suma del gasto de este mes de las <?= (int) $summary['ai'] ?> instalaciones con IA, según su última comprobación">
       <div class="cs-stat-label"><?= $this->icon('sparkles', 'cs-icon-sm') ?> IA este mes · <?= (int) $summary['ai'] ?> con IA</div>
       <div class="cs-stat-value"><?= $this->eur($summary['ai_cost']) ?></div>
@@ -63,26 +70,30 @@ $canOperate = $this->can('operate');
       <option value="attention">Requieren atención</option>
       <option value="outdated">Por actualizar</option>
       <option value="offline">No responden</option>
-      <option value="ai">Con IA</option>
+      <?php if ($showAi): ?><option value="ai">Con IA</option><?php endif ?>
+      <?php if (count($appsInUse) > 1): foreach ($appsInUse as $appId): ?>
+        <option value="app:<?= $this->e($appId) ?>"><?= $this->e($apps[$appId]['name'] ?? $appId) ?></option>
+      <?php endforeach; endif ?>
       <?php foreach (Installations::ENVIRONMENTS as $env => $label): ?>
         <option value="env:<?= $env ?>"><?= $this->e($label) ?></option>
       <?php endforeach ?>
     </select>
     <span class="cs-muted cs-small" data-filter-count></span>
     <span class="cs-muted cs-small" style="margin-left:auto">
-      <?php foreach ($summary['versions'] as $v => $n): ?>
-        <span class="cs-badge<?= $latest && version_compare((string) $v, $latest, '<') ? ' cs-badge-warning' : ' cs-badge-success' ?>"><?= $this->e($v) ?> × <?= $n ?></span>
-      <?php endforeach ?>
+      <?php foreach ($summary['versions'] as $appId => $versions): foreach ($versions as $v => $n): ?>
+        <span class="cs-badge<?= ($latest[$appId] ?? null) && version_compare((string) $v, $latest[$appId], '<') ? ' cs-badge-warning' : ' cs-badge-success' ?>"><?= $this->e(($apps[$appId]['name'] ?? $appId) . ' ' . $v) ?> × <?= $n ?></span>
+      <?php endforeach; endforeach ?>
     </span>
   </div>
 
   <?php if ($canOperate): ?>
     <div class="cs-bulkbar" data-bulkbar hidden>
       <strong data-bulk-count></strong>
-      <?php if ($latest): ?>
-        <button class="cs-btn cs-btn-sm cs-btn-primary" type="button" data-bulk="update" data-version="<?= $this->e($latest) ?>"><?= $this->icon('circle-arrow-up') ?> Actualizar a <?= $this->e($latest) ?></button>
+      <?php if (array_filter($latest)): ?>
+        <button class="cs-btn cs-btn-sm cs-btn-primary" type="button" data-bulk="update" data-version="latest" title="Cada una a la última versión de su aplicación"><?= $this->icon('circle-arrow-up') ?> Actualizar a la última</button>
       <?php endif ?>
-      <button class="cs-btn cs-btn-sm" type="button" data-bulk="backup" data-type="db"><?= $this->icon('database') ?> Copia de BD</button>
+      <button class="cs-btn cs-btn-sm" type="button" data-bulk="backup" data-type="db"
+              title="<?= $this->e(implode(' · ', array_map(static fn ($a) => $a['name'] . ': ' . ($a['backups']['db'] ?? 'sin este tipo'), $apps))) ?>"><?= $this->icon('database') ?> Copia de datos</button>
       <button class="cs-btn cs-btn-sm" type="button" data-bulk="backup" data-type="full"><?= $this->icon('archive') ?> Copia completa</button>
       <button class="cs-btn cs-btn-sm" type="button" data-bulk="check"><?= $this->icon('refresh-cw') ?> Comprobar</button>
       <button class="cs-btn cs-btn-sm cs-btn-ghost" type="button" data-bulk="clear">Quitar selección</button>
@@ -100,7 +111,7 @@ $canOperate = $this->can('operate');
           <th>PHP</th>
           <th>Última copia</th>
           <th class="cs-right">Errores 24 h</th>
-          <th class="cs-right" title="Gasto de este mes del filtrado con IA (y límite mensual)">IA</th>
+          <?php if ($showAi): ?><th class="cs-right" title="Gasto de este mes del filtrado con IA (y límite mensual)">IA</th><?php endif ?>
           <th>Avisos</th>
           <th>Comprobada</th>
         </tr>
@@ -108,23 +119,25 @@ $canOperate = $this->can('operate');
       <tbody>
       <?php foreach ($rows as $row):
           $inst = $row['inst'];
+          $app = $row['app'];
           $snap = $row['snap'];
           $d = $row['data'];
           $online = $snap !== null && $snap['ok'];
           // Rojo = no responde; naranja = responde pero hay avisos
           $dot = $snap === null ? '' : (!$online ? 'danger' : (in_array($row['level'], ['danger', 'warning'], true) ? 'warning' : 'ok'));
-          $search = mb_strtolower($inst['name'] . ' ' . $inst['client'] . ' ' . $inst['url'] . ' ' . ($d['name'] ?? '') . ' ' . ($d['version'] ?? ''));
+          $search = mb_strtolower($inst['name'] . ' ' . $inst['client'] . ' ' . $inst['url'] . ' ' . $app['name'] . ' ' . ($d['name'] ?? '') . ' ' . ($d['version'] ?? ''));
           $kinds = array_filter([
               in_array($row['level'], ['danger', 'warning'], true) ? 'attention' : null,
               $row['outdated'] ? 'outdated' : null,
               $snap !== null && !$online ? 'offline' : null,
               !empty($d['ai']['enabled']) ? 'ai' : null,
               'env:' . $inst['environment'],
+              'app:' . $app['id'],
           ]);
           $lastBackup = $d['backups']['last']['created_at'] ?? null;
       ?>
         <tr data-row data-id="<?= $this->e($inst['id']) ?>" data-name="<?= $this->e($inst['name']) ?>"
-            data-search="<?= $this->e($search) ?>" data-kinds="<?= $this->e(implode(' ', $kinds)) ?>" data-api="<?= isset($d['api']) ? '1' : '0' ?>">
+            data-search="<?= $this->e($search) ?>" data-kinds="<?= $this->e(implode(' ', $kinds)) ?>" data-api="<?= isset($d['api']) ? '1' : '0' ?>" data-outdated="<?= $row['outdated'] ? '1' : '0' ?>">
           <?php if ($canOperate): ?><td class="cs-col-check"><input type="checkbox" data-check aria-label="Seleccionar <?= $this->e($inst['name']) ?>"></td><?php endif ?>
           <td>
             <div style="display:flex;gap:10px;align-items:center">
@@ -138,10 +151,10 @@ $canOperate = $this->can('operate');
           <td><span class="cs-badge<?= $inst['environment'] === 'production' ? ' cs-badge-primary' : '' ?>"><?= $this->e(Installations::ENVIRONMENTS[$inst['environment']] ?? $inst['environment']) ?></span></td>
           <td class="cs-nowrap">
             <?php if ($d): ?>
-              <span class="cs-badge<?= $row['outdated'] ? ' cs-badge-warning' : ' cs-badge-success' ?>"><?= $this->e($d['version'] ?? '?') ?></span>
-              <?php if ($row['outdated']): ?><span class="cs-muted cs-small">→ <?= $this->e($latest) ?></span><?php endif ?>
+              <span class="cs-badge<?= $row['outdated'] ? ' cs-badge-warning' : ' cs-badge-success' ?>"><?= $this->e($app['name'] . ' ' . ($d['version'] ?? '?')) ?></span>
+              <?php if ($row['outdated']): ?><span class="cs-muted cs-small">→ <?= $this->e($row['latest']) ?></span><?php endif ?>
               <?php if (!empty($d['maintenance'])): ?><span class="cs-badge cs-badge-danger" title="Modo mantenimiento"><?= $this->icon('wrench', 'cs-icon-sm') ?></span><?php endif ?>
-            <?php else: ?><span class="cs-muted">—</span><?php endif ?>
+            <?php else: ?><span class="cs-muted"><?= $this->e($app['name']) ?></span><?php endif ?>
           </td>
           <td class="cs-nowrap"><?= $this->e($d['php'] ?? '—') ?></td>
           <td class="cs-nowrap"><?= isset($d['backups']) ? $this->time($lastBackup) : '<span class="cs-muted">—</span>' ?></td>
@@ -151,9 +164,9 @@ $canOperate = $this->can('operate');
             <?php elseif ($errors > 0): ?><span class="cs-badge cs-badge-danger"><?= (int) $errors ?></span>
             <?php else: ?><span class="cs-muted">0</span><?php endif ?>
           </td>
-          <td class="cs-right cs-nowrap">
+          <?php if ($showAi): ?><td class="cs-right cs-nowrap">
             <?php $ai = $d['ai'] ?? null; ?>
-            <?php if (empty($ai['enabled'])): ?><span class="cs-muted" title="<?= $ai === null ? 'Versión sin IA (anterior a la 0.5.0)' : 'IA desactivada' ?>">—</span>
+            <?php if (empty($ai['enabled'])): ?><span class="cs-muted" title="<?= $ai === null ? 'Sin filtrado con IA (Quasar anterior a la 0.5.0, u otra aplicación)' : 'IA desactivada' ?>">—</span>
             <?php else:
                 $tone = ['blocked' => ' cs-badge-danger', 'warn' => ' cs-badge-warning'][$ai['limit_state'] ?? ''] ?? ' cs-badge-primary';
                 $limit = (float) ($ai['monthly_limit_eur'] ?? 0);
@@ -162,7 +175,7 @@ $canOperate = $this->can('operate');
                 <?= $this->icon('sparkles', 'cs-icon-sm') ?> <?= $this->eur((float) ($ai['month_cost_eur'] ?? 0)) ?><?= $limit > 0 ? ' / ' . $this->eur($limit) : '' ?>
               </span>
             <?php endif ?>
-          </td>
+          </td><?php endif ?>
           <td>
             <span class="cs-warn-icons">
               <?php foreach ($row['warnings'] as $w): ?>

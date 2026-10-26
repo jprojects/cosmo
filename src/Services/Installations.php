@@ -7,7 +7,7 @@ use Cosmo\Core\Crypto;
 use Cosmo\Core\Store;
 
 /**
- * Instalaciones de Quasar dadas de alta en el panel (storage/data/installations.json).
+ * Instalaciones (de Quasar, Neutron…) dadas de alta en el panel (storage/data/installations.json).
  * El token se guarda cifrado; solo se descifra para hablar con la instalación.
  */
 final class Installations
@@ -21,6 +21,7 @@ final class Installations
     private const DEFAULTS = [
         'id' => '',
         'name' => '',
+        'app' => 'quasar',            // las dadas de alta antes de haber varias aplicaciones eran de Quasar
         'url' => '',
         'token' => '',
         'client' => '',
@@ -35,7 +36,7 @@ final class Installations
         'updated_at' => null,
     ];
 
-    public function __construct(private readonly Store $store, private readonly Crypto $crypto)
+    public function __construct(private readonly Store $store, private readonly Crypto $crypto, private readonly Apps $apps)
     {
     }
 
@@ -71,6 +72,7 @@ final class Installations
         $current = $id !== null ? $this->get($id) : null;
         $data = [
             'name' => trim((string) ($input['name'] ?? '')),
+            'app' => (string) ($input['app'] ?? ''),
             'url' => self::normalizeUrl((string) ($input['url'] ?? '')),
             'client' => trim((string) ($input['client'] ?? '')),
             'environment' => (string) ($input['environment'] ?? 'production'),
@@ -87,6 +89,9 @@ final class Installations
         if ($data['name'] === '' || mb_strlen($data['name']) > 100) {
             $errors['name'] = 'Escribe un nombre (máximo 100 caracteres)';
         }
+        if (!$this->apps->has($data['app'])) {
+            $errors['app'] = 'Elige la aplicación';
+        }
         if ($data['url'] === '') {
             $errors['url'] = 'URL no válida. Ejemplo: https://gestion.cliente.com';
         }
@@ -101,7 +106,7 @@ final class Installations
         if (!isset(self::SCHEDULES[$data['backup_schedule']])) {
             $errors['backup_schedule'] = 'Periodicidad no válida';
         }
-        if (!in_array($data['backup_type'], ['full', 'db', 'files'], true)) {
+        if (!isset($this->apps->get($data['app'])['backups'][$data['backup_type']])) {
             $errors['backup_type'] = 'Tipo no válido';
         }
         if ($data['backup_hour'] < 0 || $data['backup_hour'] > 23) {

@@ -11,7 +11,7 @@ use Cosmo\Controllers\InstallationController;
 use Cosmo\Controllers\ReleaseController;
 use Cosmo\Controllers\UpdateController;
 use Cosmo\Services\Activity;
-use Cosmo\Services\GitHub;
+use Cosmo\Services\Apps;
 use Cosmo\Services\Installations;
 use Cosmo\Services\LocalBackups;
 use Cosmo\Services\Monitor;
@@ -68,7 +68,7 @@ final class App
 
     private ?Installations $installations = null;
     private ?QuasarClient $client = null;
-    private ?GitHub $github = null;
+    private ?Apps $apps = null;
     private ?Activity $activity = null;
     private ?Monitor $monitor = null;
     private ?Notifier $notifier = null;
@@ -130,7 +130,7 @@ final class App
 
     public function installations(): Installations
     {
-        return $this->installations ??= new Installations($this->store, new Crypto($this->config['key'] ?? null));
+        return $this->installations ??= new Installations($this->store, new Crypto($this->config['key'] ?? null), $this->apps());
     }
 
     public function client(): QuasarClient
@@ -138,9 +138,17 @@ final class App
         return $this->client ??= new QuasarClient((array) ($this->config['http'] ?? []), $this->version());
     }
 
-    public function github(): GitHub
+    public function apps(): Apps
     {
-        return $this->github ??= new GitHub((array) ($this->config['github'] ?? []), $this->storageDir('cache'), $this->storageDir('packages'));
+        if ($this->apps === null) {
+            $apps = (array) ($this->config['apps'] ?? []);
+            // Configuraciones de antes de haber varias aplicaciones: github.repo era el de Quasar
+            if (!empty($this->config['github']['repo']) && isset($apps['quasar'])) {
+                $apps['quasar']['repo'] = $this->config['github']['repo'];
+            }
+            $this->apps = new Apps($apps, (array) ($this->config['github'] ?? []), $this->storageDir('cache'), $this->storageDir('packages'));
+        }
+        return $this->apps;
     }
 
     public function activity(): Activity
@@ -175,7 +183,7 @@ final class App
         return new Operations(
             $this->installations(),
             $this->client(),
-            $this->github(),
+            $this->apps(),
             $this->monitor(),
             $this->activity(),
             $this->localBackups(),

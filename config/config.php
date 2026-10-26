@@ -25,9 +25,29 @@ return [
     'login_max_attempts' => 5,        // intentos fallidos por usuario o IP antes de bloquear
     'login_lockout' => 900,           // segundos de bloqueo
 
-    // Repositorio de Quasar. Si es privado hace falta un token (fine-grained, permiso Contents: read-only)
+    // Aplicaciones que se pueden dar de alta. Todas hablan la misma API remota (?r=remote) y dicen cuál son
+    // en su estado ('app'); la clave es ese identificador.
+    //   repo         repositorio de GitHub con las etiquetas vX.Y.Z
+    //   min_version  primera versión con API remota (Cosmo no actualiza a una anterior)
+    //   backups      tipos de copia que acepta la acción backup, con su nombre
+    'apps' => [
+        'quasar' => [
+            'name' => 'Quasar',
+            'repo' => 'jprojects/quasar',
+            'min_version' => '0.2.0',
+            'backups' => ['full' => 'Completa', 'db' => 'Base de datos', 'files' => 'Ficheros'],
+        ],
+        'neutron' => [
+            'name' => 'Neutron',
+            'repo' => 'jprojects/neutron',
+            'min_version' => '1.0.0',
+            'backups' => ['full' => 'Completa', 'db' => 'Contenido (site/)'],
+        ],
+    ],
+
+    // Acceso a GitHub. Si los repositorios son privados hace falta un token (fine-grained, con acceso a los
+    // repositorios de 'apps' y permiso Contents: read-only)
     'github' => [
-        'repo' => 'jprojects/quasar',
         'token' => null,
         'cache_ttl' => 600,           // segundos que se guardan etiquetas y CHANGELOG
     ],

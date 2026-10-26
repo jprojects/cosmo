@@ -1,6 +1,7 @@
 <?php
 /** @var \Cosmo\Core\View $this */
 /** @var array $inst */
+/** @var array $app definición de su aplicación (Apps::get) */
 /** @var ?array $snap */
 /** @var ?array $data */
 /** @var list<array{level:string,text:string}> $warnings */
@@ -21,6 +22,7 @@ $canOperate = $this->can('operate');
 $version = $d['version'] ?? null;
 $outdated = $version !== null && $latest !== null && version_compare($version, $latest, '<');
 $levelIcon = ['danger' => 'circle-alert', 'warning' => 'triangle-alert', 'info' => 'info'];
+$backupIcon = ['full' => 'archive', 'db' => 'database', 'files' => 'hard-drive'];
 $yes = fn (?bool $v, string $yesText = 'Sí', string $noText = 'No') => $v === null ? '<span class="cs-muted">—</span>'
     : ($v ? '<span class="cs-c-success">' . $this->e($yesText) . '</span>' : '<span class="cs-c-danger">' . $this->e($noText) . '</span>');
 $urls = [
@@ -42,7 +44,7 @@ $urls = [
   <span class="cs-dot<?= $snap === null ? '' : ($online ? ' cs-dot-ok' : ' cs-dot-danger') ?>"></span>
   <?= $this->e($inst['name']) ?>
   <span class="cs-badge<?= $inst['environment'] === 'production' ? ' cs-badge-primary' : '' ?>"><?= $this->e(Installations::ENVIRONMENTS[$inst['environment']] ?? '') ?></span>
-  <?php if ($version): ?><span class="cs-badge<?= $outdated ? ' cs-badge-warning' : ' cs-badge-success' ?>">Quasar <?= $this->e($version) ?></span><?php endif ?>
+  <span class="cs-badge<?= !$version ? '' : ($outdated ? ' cs-badge-warning' : ' cs-badge-success') ?>"><?= $this->e($app['name'] . ($version ? ' ' . $version : '')) ?></span>
   <?php if (!empty($d['maintenance'])): ?><span class="cs-badge cs-badge-danger"><?= $this->icon('wrench', 'cs-icon-sm') ?> Mantenimiento</span><?php endif ?>
 <?php $this->endSlot() ?>
 <?php $this->slot('subtitle') ?>
@@ -70,10 +72,10 @@ $urls = [
   <?php endif ?>
 <?php $this->endSlot() ?>
 
-<div data-install="<?= $this->e($inst['id']) ?>" data-urls="<?= $this->json($urls) ?>" data-can-operate="<?= $canOperate ? '1' : '0' ?>">
+<div data-install="<?= $this->e($inst['id']) ?>" data-urls="<?= $this->json($urls) ?>" data-backup-types="<?= $this->json($app['backups']) ?>" data-can-operate="<?= $canOperate ? '1' : '0' ?>">
 
 <?php if ($githubError): ?>
-  <div class="cs-flash cs-flash-warning"><?= $this->icon('triangle-alert') ?> <span>GitHub: <?= $this->e($githubError) ?></span></div>
+  <div class="cs-flash cs-flash-warning"><?= $this->icon('triangle-alert') ?> <span><?= $this->e($githubError) ?></span></div>
 <?php endif ?>
 
 <div class="cs-grid">
@@ -100,20 +102,33 @@ $urls = [
           <p class="cs-muted">Sin datos todavía. Endpoint: <code><?= $this->e($endpoint) ?></code></p>
         <?php else: ?>
           <dl class="cs-kv">
-            <dt>Aplicación</dt><dd><?= $this->e($d['name'] ?? '—') ?> · Quasar <?= $this->e($version ?? '?') ?><?= $hasApi ? ' · API ' . (int) $d['api'] : ' · <span class="cs-c-warning">sin API remota</span>' ?></dd>
+            <dt>Aplicación</dt><dd><?= $this->e($d['name'] ?? '—') ?> · <?= $this->e($app['name']) ?> <?= $this->e($version ?? '?') ?><?= $hasApi ? ' · API ' . (int) $d['api'] : ' · <span class="cs-c-warning">sin API remota</span>' ?></dd>
             <dt>PHP</dt><dd><?= $this->e($d['php'] ?? '—') ?><?= isset($d['server']['sapi']) ? ' <span class="cs-muted">(' . $this->e($d['server']['sapi']) . ')</span>' : '' ?></dd>
-            <dt>Base de datos</dt><dd>
-              <?php if (isset($d['db'])): ?>
+            <?php if (isset($d['db'])): ?>
+              <dt>Base de datos</dt><dd>
                 <?= $yes($d['db']['ok'] ?? null, 'Conecta', 'No conecta') ?>
                 <?= $this->e($d['db']['version'] ?? '') ?>
                 <?php if (isset($d['db']['size'])): ?> · <?= $this->bytes((int) $d['db']['size']) ?> en <?= (int) $d['db']['tables'] ?> tablas<?php endif ?>
-              <?php else: ?>—<?php endif ?>
-            </dd>
+              </dd>
+            <?php endif ?>
+            <?php if (isset($d['site'])): ?>
+              <dt>Sitio</dt><dd>
+                <?= $yes($d['site']['template'] ?? null, 'con plantilla', 'sin plantilla') ?>
+                · <?= (int) ($d['site']['pages'] ?? 0) ?> páginas
+                <?php if (!empty($d['site']['content_modified'])): ?> · contenido editado <?= $this->time($d['site']['content_modified']) ?><?php endif ?>
+                <?php if (isset($d['site']['content_size'])): ?> (<?= $this->bytes((int) $d['site']['content_size']) ?>)<?php endif ?>
+              </dd>
+              <dt>Formulario</dt><dd>
+                <?php if (empty($d['site']['contact_form'])): ?><span class="cs-muted">sin formulario de contacto</span>
+                <?php else: ?>reCAPTCHA <?= $yes($d['recaptcha']['enabled'] ?? null, 'activado', 'sin claves') ?><?php endif ?>
+              </dd>
+            <?php endif ?>
             <?php if (isset($d['server'])): ?>
               <dt>Servidor</dt><dd><?= $this->e($d['server']['software'] ?: '—') ?> · <?= $this->e($d['server']['os'] ?? '') ?></dd>
               <dt>Disco</dt><dd><?= $this->bytes($d['server']['disk_free'] ?? null) ?> libres de <?= $this->bytes($d['server']['disk_total'] ?? null) ?></dd>
               <dt>Límites PHP</dt><dd class="cs-small">memory_limit <?= $this->e($d['server']['memory_limit']) ?> · upload <?= $this->e($d['server']['upload_max_filesize']) ?> · post <?= $this->e($d['server']['post_max_size']) ?> · max_execution_time <?= (int) $d['server']['max_execution_time'] ?> s</dd>
-              <dt>Escritura</dt><dd><?= $yes($d['server']['writable'] ?? null, 'src/ y public/ con permiso de escritura', 'sin permiso de escritura en src/ o public/') ?></dd>
+              <dt>Escritura</dt><dd><?= $yes($d['server']['writable'] ?? null, 'núcleo con permiso de escritura', 'sin permiso de escritura en el núcleo') ?>
+                <?php if (isset($d['server']['site_writable'])): ?> · <?= $yes($d['server']['site_writable'], 'site/ con permiso de escritura', 'sin permiso de escritura en site/') ?><?php endif ?></dd>
             <?php endif ?>
             <?php if (isset($d['extensions'])): ?>
               <dt>Extensiones</dt><dd>
@@ -123,15 +138,17 @@ $urls = [
               </dd>
             <?php endif ?>
             <?php if (isset($d['config'])): ?>
+              <?php $c = $d['config']; ?>
               <dt>Configuración</dt><dd class="cs-small">
-                debug <?= $yes(!$d['config']['debug'], 'off', 'ON') ?> ·
-                HTTPS <?= $yes($d['config']['https']) ?> ·
-                idioma <?= $this->e($d['config']['locale'] ?? '—') ?> ·
-                2FA <?= $this->e($d['config']['two_factor'] ?? '—') ?> ·
-                correo <?= $this->e($d['config']['mail_transport'] ?? '—') ?> ·
-                plantilla <?= $this->e($d['config']['template'] ?? '—') ?> ·
-                copias que guarda <?= (int) ($d['config']['backups_keep'] ?? 0) ?>
-                <?= !empty($d['config']['allow_ips']) ? ' · IPs restringidas' : '' ?>
+                debug <?= $yes(!$c['debug'], 'off', 'ON') ?> ·
+                HTTPS <?= $yes($c['https']) ?>
+                <?php if (isset($c['locale'])): ?> · idioma <?= $this->e($c['locale']) ?><?php endif ?>
+                <?php if (isset($c['two_factor'])): ?> · 2FA <?= $this->e($c['two_factor']) ?><?php endif ?>
+                <?php if (isset($c['admin_password'])): ?> · contraseña del editor <?= $yes($c['admin_password'], 'puesta', 'sin poner') ?><?php endif ?>
+                <?php if (isset($c['mail_transport'])): ?> · correo <?= $this->e($c['mail_transport']) ?><?php endif ?>
+                <?php if (isset($c['template'])): ?> · plantilla <?= $this->e($c['template']) ?><?php endif ?>
+                · copias que guarda <?= (int) ($c['backups_keep'] ?? 0) ?>
+                <?= !empty($c['allow_ips']) ? ' · IPs restringidas' : '' ?>
               </dd>
             <?php endif ?>
             <?php if (!empty($d['users'])): ?>
@@ -235,7 +252,7 @@ $urls = [
         <?php elseif ($version && $latest): ?><span class="cs-badge cs-badge-success">Al día</span><?php endif ?></div>
       <div class="cs-card-body">
         <?php if (!$hasApi && $d): ?>
-          <p>Esta versión no tiene API remota. Actualízala a mano a la 0.2.0 o superior (subir los ficheros y ejecutar <code>php bin/install.php</code>) y a partir de ahí se actualiza desde aquí.</p>
+          <p>Esta versión no tiene API remota. Actualízala a mano a la <?= $this->e($app['min_version']) ?> o superior (subir los ficheros y ejecutar <code>php bin/install.php</code>) y a partir de ahí se actualiza desde aquí.</p>
         <?php elseif (!$d): ?>
           <p class="cs-muted">Sin datos de la instalación.</p>
         <?php else: ?>
@@ -288,21 +305,21 @@ $urls = [
         <button class="cs-btn cs-btn-sm cs-btn-ghost" type="button" data-backups-reload title="Recargar"><?= $this->icon('refresh-cw') ?></button></div>
       <?php if ($canOperate && $hasApi): ?>
         <div class="cs-toolbar">
-          <button class="cs-btn cs-btn-sm cs-btn-primary" type="button" data-backup="full"><?= $this->icon('archive') ?> Completa</button>
-          <button class="cs-btn cs-btn-sm" type="button" data-backup="db"><?= $this->icon('database') ?> Base de datos</button>
-          <button class="cs-btn cs-btn-sm" type="button" data-backup="files"><?= $this->icon('hard-drive') ?> Ficheros</button>
+          <?php foreach ($app['backups'] as $type => $label): ?>
+            <button class="cs-btn cs-btn-sm<?= $type === 'full' ? ' cs-btn-primary' : '' ?>" type="button" data-backup="<?= $this->e($type) ?>"><?= $this->icon($backupIcon[$type] ?? 'archive') ?> <?= $this->e($label) ?></button>
+          <?php endforeach ?>
           <label class="cs-check cs-small"><input type="checkbox" data-backup-pull checked> Guardar también en Cosmo</label>
         </div>
       <?php endif ?>
       <div class="cs-card-body cs-small cs-muted">
         Programadas: <strong><?= $this->e(Installations::SCHEDULES[$inst['backup_schedule']] ?? '') ?></strong>
         <?php if ($inst['backup_schedule'] !== 'off'): ?>
-          (<?= $this->e(['full' => 'completa', 'db' => 'base de datos', 'files' => 'ficheros'][$inst['backup_type']] ?? '') ?>, a partir de las <?= (int) $inst['backup_hour'] ?>:00<?= $inst['backup_pull'] ? ', se guarda en Cosmo' : '' ?>)
+          (<?= $this->e(mb_strtolower($app['backups'][$inst['backup_type']] ?? $inst['backup_type'])) ?>, a partir de las <?= (int) $inst['backup_hour'] ?>:00<?= $inst['backup_pull'] ? ', se guarda en Cosmo' : '' ?>)
         <?php endif ?>
       </div>
       <div class="cs-card-body is-flush" data-backups>
         <?php if ($hasApi): ?><div class="cs-empty"><?= $this->icon('loader-circle', 'cs-spin') ?></div>
-        <?php else: ?><div class="cs-empty">Necesita la API remota (Quasar 0.2.0 o superior)</div><?php endif ?>
+        <?php else: ?><div class="cs-empty">Necesita la API remota (<?= $this->e($app['name'] . ' ' . $app['min_version']) ?> o superior)</div><?php endif ?>
       </div>
     </section>
 
@@ -316,7 +333,7 @@ $urls = [
             <option value="debug">Todo</option>
           </select>
           <button class="cs-btn cs-btn-sm" type="button" data-logs-load><?= $this->icon('eye') ?> Ver</button></div>
-        <div class="cs-card-body is-flush" data-logs><div class="cs-empty cs-small">Últimos 7 días de <code>storage/logs</code>. Pulsa «Ver».</div></div>
+        <div class="cs-card-body is-flush" data-logs><div class="cs-empty cs-small">Últimos 7 días del log de la instalación. Pulsa «Ver».</div></div>
       </section>
 
       <section class="cs-card" data-integrity-card>
@@ -349,7 +366,7 @@ $urls = [
       <input type="hidden" name="id" value="<?= $this->e($inst['id']) ?>">
       <div class="cs-dialog-head"><h2>¿Eliminar «<?= $this->e($inst['name']) ?>» del panel?</h2></div>
       <div class="cs-dialog-body">
-        <p>Se borran sus datos de Cosmo (configuración, token, historial). La instalación de Quasar no se toca.</p>
+        <p>Se borran sus datos de Cosmo (configuración, token, historial). La instalación de <?= $this->e($app['name']) ?> no se toca.</p>
         <label class="cs-check"><input type="checkbox" name="delete_local" value="1"> Borrar también las copias guardadas en Cosmo</label>
       </div>
       <div class="cs-dialog-foot">

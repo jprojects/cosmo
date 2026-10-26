@@ -8,7 +8,7 @@
   <form class="cs-login-box" method="post" action="<?= $this->url('login') ?>">
     <div class="cs-login-brand">
       <img src="<?= $this->asset('logo.svg') ?>" alt="">
-      <div><h1><?= $this->e($this->appName()) ?></h1><p>Panel de instalaciones de Quasar</p></div>
+      <div><h1><?= $this->e($this->appName()) ?></h1><p>Panel de instalaciones</p></div>
     </div>
     <?php if ($noUsers): ?>
       <div class="cs-flash cs-flash-warning">No hay usuarios configurados. Ejecuta <code>php bin/setup.php</code> en el servidor.</div>

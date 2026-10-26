@@ -1,5 +1,7 @@
 <?php
 /** @var \Cosmo\Core\View $this */
+/** @var array $app */
+/** @var array<string,array> $apps */
 /** @var list<array{version:string,tag:string,sha:string}> $versions */
 /** @var array<string,array{date:?string,body:string}> $changelog */
 /** @var array<string,list<array>> $byVersion */
@@ -19,10 +21,19 @@ $cached = array_column($packages, 'size', 'version');
   <?php if ($this->can('operate')): ?>
     <form method="post" action="<?= $this->url('releases-refresh') ?>" data-busy="Consultando GitHub…">
       <?= $this->csrfField() ?>
+      <input type="hidden" name="app" value="<?= $this->e($app['id']) ?>">
       <button class="cs-btn" type="submit"><?= $this->icon('refresh-cw') ?> Consultar GitHub</button>
     </form>
   <?php endif ?>
 <?php $this->endSlot() ?>
+
+<?php if (count($apps) > 1): ?>
+  <nav class="cs-tabs" aria-label="Aplicación">
+    <?php foreach ($apps as $a): ?>
+      <a href="<?= $this->url('releases', ['app' => $a['id']]) ?>" class="<?= $a['id'] === $app['id'] ? 'is-active' : '' ?>"><?= $this->e($a['name']) ?></a>
+    <?php endforeach ?>
+  </nav>
+<?php endif ?>
 
 <?php if ($error): ?>
   <div class="cs-flash cs-flash-error"><?= $this->icon('circle-alert') ?> <span><?= $this->e($error) ?></span></div>
@@ -30,7 +41,7 @@ $cached = array_column($packages, 'size', 'version');
 
 <?php if (!$versions && !$error): ?>
   <div class="cs-card"><div class="cs-empty"><?= $this->icon('tag') ?><h2>No hay versiones publicadas</h2>
-    <p>Cosmo busca etiquetas <code>vX.Y.Z</code> en el repositorio. Ver «Versiones» en el README de Quasar.</p></div></div>
+    <p>Cosmo busca etiquetas <code>vX.Y.Z</code> en el repositorio. Ver «Versiones» en el README de <?= $this->e($app['name']) ?>.</p></div></div>
 <?php endif ?>
 
 <?php foreach ($versions as $i => $v):
