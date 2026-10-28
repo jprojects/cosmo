@@ -131,10 +131,11 @@ de la IA y tablas de los informes.
 En Cosmo, el formulario: servidor, URL, carpeta del dominio (con un explorador del FTP), versión, datos de la base
 de datos, administrador y, opcional, la clave de la IA y los datos de ejemplo. Cosmo:
 
-1. Comprueba que la carpeta está vacía (salvo lo que deja el hosting: `index.html`, `.htaccess`, `cgi-bin`…) y que
-   el dominio responde por HTTPS con un certificado válido. Si algo falla, no toca nada.
-2. Sube por FTP el paquete de la versión (el mismo ZIP de las actualizaciones) y un instalador de un solo uso
-   (`cosmo-install-….php`) que solo guarda el sha256 de una clave y caduca a los 15 minutos.
+1. Comprueba que la carpeta existe (nunca la crea) y está vacía (salvo lo que deja el hosting: `index.html`,
+   `.htaccess`, `cgi-bin`…) y que el dominio responde por HTTPS con un certificado válido. Si algo falla, no toca nada.
+2. Sube por FTP un instalador de un solo uso (`cosmo-install-….php`) que solo guarda el sha256 de una clave y caduca
+   a los 15 minutos, y lo pide por la URL: si no responde, la carpeta no es la raíz del dominio (o el dominio no
+   ejecuta PHP), lo borra y avisa. Después sube el paquete de la versión (el mismo ZIP de las actualizaciones).
 3. Lo llama por HTTPS con la clave y los datos. El instalador descomprime el paquete (conserva el `.htaccess` del
    hosting delante del de la aplicación), hace `require` de `bin/cosmo-setup.php` de la aplicación —que escribe
    `config.local.php` (plantilla + base de datos + URL + token de Cosmo generado), crea las tablas y el

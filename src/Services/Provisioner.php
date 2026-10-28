@@ -139,14 +139,17 @@ final class Provisioner
             $tmp = tempnam(sys_get_temp_dir(), 'cosmo');
             file_put_contents($tmp, InstallerScript::render(hash('sha256', $secret), time() + self::INSTALLER_TTL));
             try {
-                $ftp->upload($package['path'], $d['folder'] . '/' . $packageName);
-                $uploaded[] = $d['folder'] . '/' . $packageName;
+                // Primero el instalador (pequeño): si la URL no lo sirve, la carpeta no es la del dominio
                 $ftp->upload($tmp, $d['folder'] . '/' . $installerName);
                 $uploaded[] = $d['folder'] . '/' . $installerName;
             } finally {
                 @unlink($tmp);
             }
-            $this->ok('Paquete e instalador subidos por FTP');
+            $this->checkFolderServed($d['url'] . '/' . $installerName, $d['folder']);
+            $this->ok('La carpeta ' . $d['folder'] . ' es la que sirve ' . $d['url'] . ' (y ejecuta PHP)');
+            $ftp->upload($package['path'], $d['folder'] . '/' . $packageName);
+            $uploaded[] = $d['folder'] . '/' . $packageName;
+            $this->ok('Paquete subido por FTP');
 
             // 3. Instalación en el servidor
             $token = bin2hex(random_bytes(32));
@@ -228,6 +231,36 @@ final class Provisioner
                 default => "El dominio no responde por HTTPS: $error",
             });
         }
+    }
+
+    /**
+     * GET al instalador recién subido: sin POST responde 403 con JSON. Un 404 (o HTML, o el PHP en texto) quiere
+     * decir que la carpeta elegida no es la raíz del dominio o que el dominio no ejecuta PHP.
+     */
+    private function checkFolderServed(string $url, string $folder): void
+    {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTPS | CURLPROTO_HTTP,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_USERAGENT => 'Cosmo',
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+        ]);
+        $body = (string) curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $json = json_decode($body, true);
+        if ($code === 403 && is_array($json) && ($json['ok'] ?? null) === false) {
+            return;
+        }
+        if (str_contains($body, 'COSMO_SECRET')) {
+            throw new \RuntimeException('El dominio sirve ' . $folder . ' pero no ejecuta PHP: revisa la versión de PHP del dominio en el panel del hosting');
+        }
+        throw new \RuntimeException('La carpeta ' . $folder . ' no es la que sirve ' . preg_replace('~/[^/]+$~', '', $url)
+            . " (HTTP $code al pedir el instalador). Elige el directorio raíz del dominio que muestra el panel del hosting");
     }
 
     /** POST al instalador; devuelve su JSON o lanza el error que da. */

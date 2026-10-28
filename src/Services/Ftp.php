@@ -67,7 +67,8 @@ final class Ftp
     {
         $remote = self::normalize($remote);
         $dir = dirname($remote);
-        $this->run(($dir === '/' ? '' : $dir) . '/', [CURLOPT_QUOTE => ['DELE ' . basename($remote)], CURLOPT_NOBODY => true]);
+        // POSTQUOTE: el DELE va después de entrar en la carpeta (QUOTE se enviaría antes, desde la raíz)
+        $this->run(($dir === '/' ? '' : $dir) . '/', [CURLOPT_POSTQUOTE => ['DELE ' . basename($remote)]]);
     }
 
     /** "/a//b/../c/" → "/a/c"; rechaza rutas con ".." */
@@ -90,7 +91,8 @@ final class Ftp
             CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_TIMEOUT => $this->timeout,
             CURLOPT_PROTOCOLS => CURLPROTO_FTP,
-            CURLOPT_FTP_CREATE_MISSING_DIRS => CURLFTP_CREATE_DIR,
+            // Nunca crea carpetas: una ruta mal escrita acabaría en una carpeta nueva que no es la del dominio
+            CURLOPT_FTP_CREATE_MISSING_DIRS => CURLFTP_CREATE_DIR_NONE,
             CURLOPT_USE_SSL => !empty($this->server['ftps']) ? CURLUSESSL_ALL : CURLUSESSL_NONE,
             CURLOPT_SSL_VERIFYPEER => !empty($this->server['verify_ssl']),
             CURLOPT_SSL_VERIFYHOST => !empty($this->server['verify_ssl']) ? 2 : 0,
@@ -101,6 +103,7 @@ final class Ftp
             $code = curl_errno($ch);
             throw new \RuntimeException(match ($code) {
                 67 => 'FTP: usuario o contraseña incorrectos', // CURLE_LOGIN_DENIED (PHP no la define)
+                9 => 'FTP: la carpeta ' . (rtrim(str_ends_with($path, '/') ? $path : dirname($path), '/') ?: '/') . ' no existe o no tienes acceso', // CURLE_REMOTE_ACCESS_DENIED
                 CURLE_COULDNT_CONNECT, CURLE_COULDNT_RESOLVE_HOST, CURLE_OPERATION_TIMEDOUT => 'FTP: no se puede conectar con ' . $this->server['host'] . " ($error)",
                 CURLE_FTP_SSL_FAILED => 'FTP: el servidor no admite FTPS; desactívalo en el servidor',
                 default => "FTP: $error",

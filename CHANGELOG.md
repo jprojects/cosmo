@@ -2,6 +2,16 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.3.1 — 2026-10-28
+
+Nueva instalación: la carpeta del dominio.
+
+- El FTP ya no crea carpetas: una ruta mal escrita daba una carpeta nueva que el dominio no servía y el instalador
+  no se encontraba. Ahora avisa de que la carpeta no existe.
+- Antes de subir el paquete, Cosmo sube el instalador y lo pide por la URL para confirmar que la carpeta es la
+  raíz del dominio y que ejecuta PHP.
+- Borrar por FTP no funcionaba (el `DELE` se enviaba desde la raíz del FTP): lo subido se queda limpio si falla.
+
 ## 0.3.0 — 2026-10-28
 
 Instalaciones nuevas desde Cosmo, por FTP.
