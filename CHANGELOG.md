@@ -2,6 +2,11 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.3.2 — 2026-10-28
+
+- Nueva instalación: se admite la carpeta `/` para un FTP propio del dominio, que entra directamente en su carpeta
+  (las comprobaciones de carpeta vacía y de que la URL la sirve siguen protegiendo).
+
 ## 0.3.1 — 2026-10-28
 
 Nueva instalación: la carpeta del dominio.

@@ -51,11 +51,10 @@ final class Provisioner
                 $errors['url'] = 'Ya hay una instalación con esta URL: ' . $other['name'];
             }
         }
+        // "/" vale (un FTP propio del dominio entra directamente en su carpeta): ya protegen la comprobación de
+        // carpeta vacía y la de que la URL sirve esa carpeta
         try {
             $folder = Ftp::normalize((string) ($in['folder'] ?? ''));
-            if ($folder === '/') {
-                $errors['folder'] = 'Elige la carpeta del dominio (no la raíz del FTP)';
-            }
         } catch (\InvalidArgumentException) {
             $folder = '';
             $errors['folder'] = 'Carpeta no válida';
