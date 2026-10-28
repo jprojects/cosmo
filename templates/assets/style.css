@@ -294,3 +294,16 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .cs-meter > span { display: block; height: 100%; border-radius: inherit; background: var(--success); }
 .cs-meter-warning > span { background: var(--warning); }
 .cs-meter-danger > span { background: var(--danger); }
+
+/* Instalaciones nuevas: explorador de carpetas del FTP y acceso del administrador */
+.cs-browser { margin-top: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-alt); max-height: 320px; overflow: auto; }
+.cs-browser > .cs-muted, .cs-browser > .cs-c-danger { display: block; padding: 10px 12px; }
+.cs-browser-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface-alt); }
+.cs-browser-head .cs-mono { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cs-browser-list { list-style: none; margin: 0; padding: 4px; }
+.cs-browser-list li.cs-muted { padding: 6px 8px; }
+.cs-browser-list button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-radius: 4px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.cs-browser-list button:hover, .cs-browser-list button:focus-visible { background: var(--row-hover); outline: none; }
+.cs-browser-list .cs-icon { color: var(--warning); }
+.cs-provision-done { border-color: color-mix(in srgb, var(--success) 40%, var(--border)); }
+.cs-secret { font-size: 15px; padding: 3px 8px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 4px; margin-right: 6px; user-select: all; }

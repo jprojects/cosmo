@@ -9,15 +9,18 @@ use Cosmo\Controllers\BackupController;
 use Cosmo\Controllers\DashboardController;
 use Cosmo\Controllers\InstallationController;
 use Cosmo\Controllers\ReleaseController;
+use Cosmo\Controllers\ServerController;
 use Cosmo\Controllers\UpdateController;
 use Cosmo\Services\Activity;
 use Cosmo\Services\Apps;
+use Cosmo\Services\AppTemplates;
 use Cosmo\Services\Installations;
 use Cosmo\Services\LocalBackups;
 use Cosmo\Services\Monitor;
 use Cosmo\Services\Notifier;
 use Cosmo\Services\Operations;
 use Cosmo\Services\QuasarClient;
+use Cosmo\Services\Servers;
 
 final class App
 {
@@ -53,6 +56,18 @@ final class App
         'releases-refresh' => [ReleaseController::class, 'refresh', 'operate'],
 
         'activity' => [ActivityController::class, 'index', 'view'],
+
+        // Servidores e instalaciones nuevas por FTP
+        'servers' => [ServerController::class, 'index', 'manage'],
+        'server-edit' => [ServerController::class, 'edit', 'manage'],
+        'server-save' => [ServerController::class, 'save', 'manage'],
+        'server-delete' => [ServerController::class, 'delete', 'manage'],
+        'server-test' => [ServerController::class, 'test', 'manage'],
+        'server-browse' => [ServerController::class, 'browse', 'manage'],
+        'provision' => [ServerController::class, 'provision', 'manage'],
+        'provision-run' => [ServerController::class, 'provisionRun', 'manage'],
+        'app-template' => [ServerController::class, 'template', 'manage'],
+        'app-template-save' => [ServerController::class, 'templateSave', 'manage'],
     ];
 
     private const ASSET_TYPES = [
@@ -131,6 +146,16 @@ final class App
     public function installations(): Installations
     {
         return $this->installations ??= new Installations($this->store, new Crypto($this->config['key'] ?? null), $this->apps());
+    }
+
+    public function servers(): Servers
+    {
+        return new Servers($this->store, new Crypto($this->config['key'] ?? null));
+    }
+
+    public function appTemplates(): AppTemplates
+    {
+        return new AppTemplates($this->store, new Crypto($this->config['key'] ?? null));
     }
 
     public function client(): QuasarClient

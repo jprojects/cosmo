@@ -17,6 +17,7 @@ $breadcrumbs = $breadcrumbs ?? [[$heading, null]];
 $nav = [
     ['home', 'Instalaciones', 'server', ['home', 'install', 'install-edit', 'install-save']],
     ['releases', 'Versiones', 'tag', ['releases']],
+    ...($this->can('manage') ? [['servers', 'Servidores', 'server-cog', ['servers', 'server-edit', 'server-save', 'provision', 'provision-run', 'app-template', 'app-template-save']]] : []),
     ['activity', 'Actividad', 'history', ['activity']],
 ];
 ?>
@@ -88,6 +89,6 @@ $nav = [
   </div>
 </div>
 <div class="cs-toasts" id="cs-toasts" aria-live="polite"></div>
-<?= $this->iconSprite(['circle-check', 'circle-x', 'triangle-alert', 'info', 'loader-circle', 'x', 'download', 'trash-2', 'archive', 'database', 'hard-drive', 'cloud-download']) ?>
+<?= $this->iconSprite(['circle-check', 'circle-x', 'triangle-alert', 'info', 'loader-circle', 'x', 'download', 'trash-2', 'archive', 'database', 'hard-drive', 'cloud-download', 'folder', 'corner-left-up', 'check']) ?>
 </body>
 </html>

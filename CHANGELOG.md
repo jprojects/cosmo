@@ -2,6 +2,19 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.3.0 — 2026-10-28
+
+Instalaciones nuevas desde Cosmo, por FTP.
+
+- **Servidores**: el FTP de cada cuenta de hosting (contraseña cifrada, FTPS), con prueba de conexión.
+- **Plantilla de configuración** de Quasar para las instalaciones nuevas: idioma, con qué se entra, verificación en
+  dos pasos, SMTP, límite de la IA y tablas de informes.
+- **Nueva instalación**: con el dominio y la base de datos ya creados en el hosting, Cosmo comprueba la carpeta y el
+  HTTPS, sube el paquete y un instalador de un solo uso, instala (configuración, tablas, administrador con
+  contraseña generada), da de alta la instalación, la comprueba y hace la primera copia. Vuelta atrás si falla.
+  Explorador de carpetas del FTP. Requiere Quasar 0.10.0 o superior.
+- Confirmación genérica `data-confirm` en formularios y botones; copiar al portapapeles.
+
 ## 0.2.1 — 2026-10-28
 
 Compatibilidad con PHP 8.5.

@@ -117,6 +117,35 @@ Las instalaciones dadas de alta antes de que hubiera varias aplicaciones son de 
 Las instalaciones con Quasar 0.1.x se ven (versión y estado básico), pero para copias y actualizaciones hay
 que subirlas a mano a la 0.2.0 la primera vez.
 
+## Instalaciones nuevas desde Cosmo (por FTP)
+
+*Servidores → Nueva instalación* instala una aplicación desde cero en un hosting compartido sin SSH (p. ej.
+Webempresa con wePanel). Por ahora, **Quasar** (0.10.0 o superior).
+
+**Una vez:** *Servidores → Nuevo servidor* con el FTP de la cuenta de hosting (contraseña cifrada, FTPS por
+defecto; **Probar conexión** lo comprueba) y *Plantilla de Quasar* con lo que se repite en todos los clientes:
+idioma, con qué se entra (usuario o email), verificación en dos pasos, SMTP (contraseña cifrada), límite mensual
+de la IA y tablas de los informes.
+
+**En cada cliente:** en el panel del hosting se crea el dominio (con su SSL) y una base de datos con su usuario.
+En Cosmo, el formulario: servidor, URL, carpeta del dominio (con un explorador del FTP), versión, datos de la base
+de datos, administrador y, opcional, la clave de la IA y los datos de ejemplo. Cosmo:
+
+1. Comprueba que la carpeta está vacía (salvo lo que deja el hosting: `index.html`, `.htaccess`, `cgi-bin`…) y que
+   el dominio responde por HTTPS con un certificado válido. Si algo falla, no toca nada.
+2. Sube por FTP el paquete de la versión (el mismo ZIP de las actualizaciones) y un instalador de un solo uso
+   (`cosmo-install-….php`) que solo guarda el sha256 de una clave y caduca a los 15 minutos.
+3. Lo llama por HTTPS con la clave y los datos. El instalador descomprime el paquete (conserva el `.htaccess` del
+   hosting delante del de la aplicación), hace `require` de `bin/cosmo-setup.php` de la aplicación —que escribe
+   `config.local.php` (plantilla + base de datos + URL + token de Cosmo generado), crea las tablas y el
+   administrador y, sin datos de ejemplo, quita los módulos de ejemplo— y se borra junto con el paquete. Si algo
+   falla, deshace lo descomprimido: se puede repetir sobre la carpeta limpia.
+4. Da de alta la instalación en el panel, la comprueba y hace la primera copia (guardada también en Cosmo).
+
+La contraseña del administrador la genera Cosmo y se enseña **una sola vez** al terminar. La de la base de datos y la
+clave de la IA van a la instalación; Cosmo no las guarda. Solo para pruebas en local se admite `http://` en
+`localhost` / `127.0.0.1`.
+
 ## Cómo es una actualización
 
 Desde la ficha (o varias a la vez desde el panel), Cosmo:
@@ -173,3 +202,7 @@ return [
   siguen redirecciones.
 - Cabeceras de seguridad y CSP estricta (sin scripts en línea).
 - Restringe la API de cada instalación a la IP de Cosmo con `remote.allow_ips`.
+- Las contraseñas del FTP de los servidores y del SMTP de las plantillas se guardan cifradas con la misma clave.
+  Quien tenga acceso de administrador a Cosmo puede instalar en esos servidores: protege bien ese acceso.
+- El instalador de las instalaciones nuevas es de un solo uso: clave aleatoria de 256 bits (solo su sha256 en el
+  servidor), 15 minutos de vida, se borra al terminar (también si falla) y no sobrescribe una instalación existente.

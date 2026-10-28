@@ -99,9 +99,39 @@
 
   // ---------------------------------------------------------------- general
 
+  // Confirmación antes de enviar: data-confirm en el formulario o en el botón que lo envía
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    const btn = e.submitter;
+    const text = btn?.dataset.confirm || form.dataset.confirm;
+    if (!text || form.dataset.confirmed) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const danger = btn?.classList.contains('cs-btn-danger');
+    confirmDialog('Confirmar', text, btn ? btn.textContent.trim() : 'Aceptar', danger).then((ok) => {
+      if (!ok) return;
+      form.dataset.confirmed = '1';
+      form.requestSubmit(btn || undefined);
+      delete form.dataset.confirmed;
+    });
+  }, true);
+
   document.addEventListener('submit', (e) => {
     const form = e.target.closest('form[data-busy]');
     if (form) busy($('button[type="submit"]', form), true, form.dataset.busy);
+  });
+
+  // Copiar al portapapeles: [data-copy] copia el [data-copy-text] de su mismo contenedor
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-copy]');
+    if (!b) return;
+    const text = $('[data-copy-text]', b.parentElement)?.textContent.trim() || '';
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('success', 'Copiado');
+    } catch {
+      toast('error', 'No se ha podido copiar: selecciónalo a mano');
+    }
   });
 
   document.addEventListener('click', (e) => {
@@ -431,6 +461,72 @@
   }
 
   // ---------------------------------------------------------------- formulario de instalación
+
+  // ---------------------------------------------------------------- servidores: probar el FTP
+
+  const serverForm = $('[data-server-form]');
+  if (serverForm) {
+    const result = $('[data-test-result]', serverForm);
+    $('[data-test-ftp]', serverForm).addEventListener('click', async (e) => {
+      const b = e.currentTarget;
+      const f = serverForm.elements;
+      busy(b, true, 'Probando…');
+      result.innerHTML = '';
+      try {
+        const r = await api(serverForm.dataset.testUrl, {
+          id: f.id?.value || '', host: f.host.value, port: f.port.value, user: f.user.value, password: f.password.value,
+          base: f.base.value, ftps: f.ftps.checked ? '1' : '0', verify_ssl: f.verify_ssl.checked ? '1' : '0',
+        });
+        result.innerHTML = `<span class="cs-c-success">${icon('circle-check')} Conecta: ${r.dirs} carpetas y ${r.files} ficheros en la carpeta inicial</span>`;
+      } catch (err) {
+        result.innerHTML = `<span class="cs-c-danger">${icon('circle-x')} ${esc(err.message)}</span>`;
+      }
+      busy(b, false);
+    });
+  }
+
+  // ---------------------------------------------------------------- instalación nueva: explorar carpetas del FTP
+
+  const provision = $('[data-provision-form]');
+  if (provision) {
+    const browser = $('[data-browser]', provision);
+    const folder = provision.elements.folder;
+    const serverSelect = provision.elements.server;
+    const url = provision.elements.url;
+    const open = async (path) => {
+      browser.hidden = false;
+      browser.innerHTML = `<div class="cs-muted">${icon('loader-circle', 'cs-spin')} Leyendo el FTP…</div>`;
+      try {
+        const q = new URLSearchParams({ id: serverSelect.value, path });
+        const r = await api(`${provision.dataset.browseUrl}&${q}`);
+        const empty = r.dirs.length === 0 && r.files === 0;
+        browser.innerHTML = `<div class="cs-browser-head"><span class="cs-mono">${esc(r.path)}</span>
+            <span class="cs-muted cs-small">${r.dirs.length} carpetas · ${r.files} ficheros</span>
+            <button class="cs-btn cs-btn-sm cs-btn-primary" type="button" data-pick="${esc(r.path)}">${icon('check')} Usar esta carpeta</button></div>
+          <ul class="cs-browser-list">
+            ${r.parent !== null ? `<li><button type="button" data-go="${esc(r.parent)}">${icon('corner-left-up')} ..</button></li>` : ''}
+            ${r.dirs.map((d) => `<li><button type="button" data-go="${esc((r.path === '/' ? '' : r.path) + '/' + d)}">${icon('folder')} ${esc(d)}</button></li>`).join('')}
+            ${empty ? '<li class="cs-muted">Carpeta vacía</li>' : ''}
+          </ul>`;
+      } catch (err) {
+        browser.innerHTML = `<span class="cs-c-danger">${icon('circle-x')} ${esc(err.message)}</span>`;
+      }
+    };
+    $('[data-browse]', provision).addEventListener('click', () => open(folder.value || serverSelect.selectedOptions[0].dataset.base || '/'));
+    browser.addEventListener('click', (e) => {
+      const go = e.target.closest('[data-go]');
+      if (go) open(go.dataset.go);
+      const pick = e.target.closest('[data-pick]');
+      if (pick) {
+        folder.value = pick.dataset.pick;
+        browser.hidden = true;
+        // Una carpeta con nombre de dominio da la URL
+        const last = pick.dataset.pick.split('/').pop();
+        if (!url.value && /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(last)) url.value = `https://${last}`;
+      }
+    });
+    serverSelect.addEventListener('change', () => { browser.hidden = true; });
+  }
 
   const form = $('[data-install-form]');
   if (form) {
