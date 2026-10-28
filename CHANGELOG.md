@@ -2,6 +2,15 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.2.1 — 2026-10-28
+
+Compatibilidad con PHP 8.5.
+
+- Fuera las llamadas a `curl_close()` (sin efecto desde PHP 8.0 y obsoleta en 8.5): con PHP 8.5 la página de
+  versiones, las comprobaciones de las instalaciones y los avisos daban error 500.
+- Los avisos de obsolescencia de PHP se anotan en el log como `WARNING` y ya no interrumpen la página; el resto de
+  avisos y errores sigue igual.
+
 ## 0.2.0 — 2026-10-26
 
 Varias aplicaciones: Quasar y Neutron (y las que repliquen su API remota).

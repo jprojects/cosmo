@@ -50,6 +50,5 @@ final class Notifier
         if ($ok === false || $code >= 300) {
             Log::warning('No se pudo enviar el aviso al webhook', ['code' => $code, 'error' => curl_error($ch)]);
         }
-        curl_close($ch);
     }
 }

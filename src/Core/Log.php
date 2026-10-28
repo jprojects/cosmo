@@ -20,6 +20,11 @@ final class Log
             if (!(error_reporting() & $no)) {
                 return false;
             }
+            // Lo obsoleto (p. ej. al subir de versión de PHP) solo se anota: no debe tumbar una página
+            if ($no === E_DEPRECATED || $no === E_USER_DEPRECATED) {
+                self::write('WARNING', "PHP obsoleto: $msg en $file:$line", []);
+                return true;
+            }
             throw new \ErrorException($msg, 0, $no, $file, $line);
         });
     }

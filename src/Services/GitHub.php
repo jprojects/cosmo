@@ -225,7 +225,6 @@ final class GitHub
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $error = $body === false ? curl_error($ch) : null;
-        curl_close($ch);
         if ($out) {
             fclose($out);
         }

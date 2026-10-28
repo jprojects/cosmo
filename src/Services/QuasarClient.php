@@ -82,7 +82,6 @@ final class QuasarClient
                     // curl_error no funciona con multi: el código del resultado sí
                     $results[$id] = new Response(false, 0, null, curl_strerror($info['result']), (int) (curl_getinfo($ch, CURLINFO_TOTAL_TIME) * 1000));
                     curl_multi_remove_handle($mh, $ch);
-                    curl_close($ch);
                 } else {
                     curl_multi_remove_handle($mh, $ch);
                     $results[$id] = $this->finish($ch, $body);
@@ -118,7 +117,6 @@ final class QuasarClient
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $ms = (int) (curl_getinfo($ch, CURLINFO_TOTAL_TIME) * 1000);
         $error = $ok === false ? curl_error($ch) : null;
-        curl_close($ch);
         fclose($out);
 
         if ($error !== null || $code !== 200) {
@@ -171,7 +169,6 @@ final class QuasarClient
         }
         $ok = curl_exec($ch);
         $error = $ok === false && !$started ? ($status ? "HTTP $status" : curl_error($ch)) : null;
-        curl_close($ch);
         return $error;
     }
 
@@ -200,7 +197,6 @@ final class QuasarClient
         $ms = (int) (curl_getinfo($ch, CURLINFO_TOTAL_TIME) * 1000);
         $location = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
         $error = $body === false ? curl_error($ch) : null;
-        curl_close($ch);
 
         if ($body === false) {
             return new Response(false, 0, null, $error ?: 'Sin respuesta', $ms);
