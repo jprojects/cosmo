@@ -43,6 +43,12 @@ return [
             'min_version' => '1.0.0',
             'backups' => ['full' => 'Completa', 'db' => 'Contenido (site/)'],
         ],
+        'nebula' => [
+            'name' => 'Nebula',
+            'repo' => 'jprojects/nebula',
+            'min_version' => '0.1.0',
+            'backups' => ['full' => 'Completa', 'db' => 'Base de datos', 'files' => 'Ficheros'],
+        ],
     ],
 
     // Acceso a GitHub. Si los repositorios son privados hace falta un token (fine-grained, con acceso a los

@@ -1,12 +1,14 @@
 # Cosmo
 
-Panel central para controlar las instalaciones de **Quasar**, **Neutron** y las aplicaciones que vengan: ver
+Panel central para controlar las instalaciones de **Quasar**, **Neutron**, **Nebula** y las aplicaciones que vengan: ver
 en qué versión está cada una y cómo están, actualizarlas desde GitHub, hacer y guardar copias de seguridad y
 saber quién hizo qué.
 
 PHP 8.1+ sin dependencias y **sin base de datos**: los datos son ficheros JSON en `storage/`.
 Habla con cada instalación por su API remota (`?r=remote`): la definió Quasar (0.2.0 o superior) y Neutron
-(1.0.0 o superior) la replica con las mismas acciones y respuestas.
+(1.0.0 o superior) y Nebula (0.1.0 o superior, la tienda online) la replican con las mismas acciones y respuestas.
+Las instalaciones nuevas desde Cosmo (por FTP) son solo de Quasar: Nebula y Neutron se instalan a mano y se dan de
+alta para actualizarlas y hacer copias.
 
 ## Qué hace
 
@@ -21,7 +23,7 @@ Habla con cada instalación por su API remota (`?r=remote`): la definió Quasar 
   instalación responde como otra aplicación distinta de la dada de alta, se avisa y no se actualiza.
 - **Actualizaciones** desde las etiquetas `vX.Y.Z` de GitHub, con el CHANGELOG de lo que cambia. Copia previa,
   mantenimiento, autoprueba con vuelta atrás automática, migración de BD y comprobación final.
-- **Copias de seguridad** de los tipos de cada aplicación (Quasar: completa, BD o ficheros; Neutron: completa o
+- **Copias de seguridad** de los tipos de cada aplicación (Quasar y Nebula: completa, BD o ficheros; Neutron: completa o
   solo el contenido de `site/`): se crean en la instalación y se pueden descargar o
   guardar en Cosmo (segunda ubicación, con sha256 verificado). Copias programadas diarias o semanales.
 - **Filtrado con IA** (Quasar 0.5.0+): si cada instalación lo tiene activado, modelo, gasto del mes respecto a su

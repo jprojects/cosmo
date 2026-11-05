@@ -2,6 +2,11 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.4.0 — 2026-11-05
+
+- **Nebula** (la tienda online, `jprojects/nebula`, 0.1.0 o superior) en `apps`: se da de alta, se actualiza desde
+  sus etiquetas y se hacen copias (completa, BD o ficheros) igual que Quasar. No se instala desde Cosmo.
+
 ## 0.3.2 — 2026-10-28
 
 - Nueva instalación: se admite la carpeta `/` para un FTP propio del dominio, que entra directamente en su carpeta
