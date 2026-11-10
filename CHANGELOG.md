@@ -2,6 +2,11 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.5.0 — 2026-11-10
+
+- **Campañas**: avisos de AFI en el inicio del panel de las webs Neutron (1.14.0+), para todas o para unas concretas
+  y con caducidad. Se envían al guardar y se pueden volver a enviar; cada campaña muestra sus vistas y clics.
+
 ## 0.4.0 — 2026-11-05
 
 - **Nebula** (la tienda online, `jprojects/nebula`, 0.1.0 o superior) en `apps`: se da de alta, se actualiza desde

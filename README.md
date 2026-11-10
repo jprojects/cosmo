@@ -31,6 +31,9 @@ alta para actualizarlas y hacer copias.
 - **Log** e **integridad** de cada instalación, **mantenimiento** on/off y **disponibilidad** (uptime y tiempo
   de respuesta de 7 días).
 - **Actividad**: registro de todas las acciones (usuario, IP, resultado), filtrable.
+- **Campañas** (Neutron 1.14.0+): avisos de AFI en el inicio del panel de las webs (`/admin/`), con un botón a una
+  página (un servicio, una promoción), para todas las webs o para unas concretas y con fecha de caducidad. Vistas y
+  clics de cada una.
 - **Avisos por webhook** (Slack/Mattermost, Discord, ntfy o JSON) cuando una instalación cae o se recupera,
   o falla una copia o una actualización.
 - Usuarios en la configuración, con tres roles.
@@ -149,6 +152,21 @@ La contraseña del administrador la genera Cosmo y se enseña **una sola vez** a
 clave de la IA van a la instalación; Cosmo no las guarda. Solo para pruebas en local se admite `http://` en
 `localhost` / `127.0.0.1`.
 
+## Campañas
+
+*Campañas → Nueva campaña*: título, texto, botón con su enlace, «hasta» (opcional) y a qué webs Neutron va (todas,
+también las que se den de alta después, o las marcadas). Se escriben en el idioma de los clientes: el panel no los
+traduce.
+
+**Guardar y enviar** (y *Eliminar*) la manda en el momento: cada web recibe la lista entera de sus campañas con la
+acción remota `announcements-set` de Neutron, así que quitar, cambiar o caducar una es volver a enviar. Las caducadas
+no se envían. La respuesta trae las **vistas** (una por sesión del panel de la web) y los **clics** del botón de cada
+campaña, que salen en la lista con el porcentaje. **Enviar ahora** vuelve a enviar y actualiza las cifras; si una web
+no responde, se conservan sus últimas cifras y la campaña lo marca.
+
+Las webs con una versión anterior a Neutron 1.14.0, o de las que no hay estado, no se tocan y salen en la lista para
+actualizarlas. Datos en `storage/data/campaigns.json`. Crear y editar requiere el permiso `manage`; enviar, `operate`.
+
 ## Cómo es una actualización
 
 Desde la ficha (o varias a la vez desde el panel), Cosmo:
@@ -175,7 +193,7 @@ src/Core/          App (rutas), Auth, Session, View, Store (JSON), Crypto, Log
 src/Services/      Apps, Installations, QuasarClient, GitHub, Monitor, Health, Operations, LocalBackups, Activity, Notifier
 src/Controllers/   una clase por pantalla
 templates/         plantillas PHP, assets/ (CSS y JS sin dependencias) e icons.php (Lucide)
-storage/data/      installations.json (tokens cifrados), status/, history/, activity.jsonl, schedule.json
+storage/data/      installations.json (tokens cifrados), status/, history/, activity.jsonl, schedule.json, campaigns.json
 storage/backups/   copias guardadas en Cosmo, por instalación
 storage/packages/  ZIP de cada versión ({aplicación}-X.Y.Z.zip)
 storage/cache/     etiquetas y CHANGELOG de GitHub, por aplicación

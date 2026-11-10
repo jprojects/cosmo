@@ -6,6 +6,7 @@ namespace Cosmo\Core;
 use Cosmo\Controllers\ActivityController;
 use Cosmo\Controllers\AuthController;
 use Cosmo\Controllers\BackupController;
+use Cosmo\Controllers\CampaignController;
 use Cosmo\Controllers\DashboardController;
 use Cosmo\Controllers\InstallationController;
 use Cosmo\Controllers\ReleaseController;
@@ -14,6 +15,7 @@ use Cosmo\Controllers\UpdateController;
 use Cosmo\Services\Activity;
 use Cosmo\Services\Apps;
 use Cosmo\Services\AppTemplates;
+use Cosmo\Services\Campaigns;
 use Cosmo\Services\Installations;
 use Cosmo\Services\LocalBackups;
 use Cosmo\Services\Monitor;
@@ -56,6 +58,12 @@ final class App
         'releases-refresh' => [ReleaseController::class, 'refresh', 'operate'],
 
         'activity' => [ActivityController::class, 'index', 'view'],
+
+        'campaigns' => [CampaignController::class, 'index', 'view'],
+        'campaign-edit' => [CampaignController::class, 'edit', 'manage'],
+        'campaign-save' => [CampaignController::class, 'save', 'manage'],
+        'campaign-delete' => [CampaignController::class, 'delete', 'manage'],
+        'campaign-sync' => [CampaignController::class, 'sync', 'operate'],
 
         // Servidores e instalaciones nuevas por FTP
         'servers' => [ServerController::class, 'index', 'manage'],
@@ -191,6 +199,11 @@ final class App
             $this->notifier(),
             (array) ($this->config['monitor'] ?? []),
         );
+    }
+
+    public function campaigns(): Campaigns
+    {
+        return new Campaigns($this->store, $this->installations(), $this->monitor(), $this->client());
     }
 
     public function notifier(): Notifier

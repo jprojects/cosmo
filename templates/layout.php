@@ -18,6 +18,7 @@ $nav = [
     ['home', 'Instalaciones', 'server', ['home', 'install', 'install-edit', 'install-save']],
     ['releases', 'Versiones', 'tag', ['releases']],
     ...($this->can('manage') ? [['servers', 'Servidores', 'server-cog', ['servers', 'server-edit', 'server-save', 'provision', 'provision-run', 'app-template', 'app-template-save']]] : []),
+    ['campaigns', 'Campañas', 'megaphone', ['campaigns', 'campaign-edit', 'campaign-save']],
     ['activity', 'Actividad', 'history', ['activity']],
 ];
 ?>
