@@ -121,13 +121,13 @@ final class Health
             }
         }
 
-        // Filtrado con IA (Quasar 0.5.0+): límite mensual y errores
+        // IA (Quasar 0.5.0+: filtrado; Neutron 1.16.0+: textos del editor): límite mensual y errores
         $ai = $d['ai'] ?? null;
         if (is_array($ai) && !empty($ai['enabled'])) {
             if (isset($ai['error'])) {
                 $add('warning', 'IA activada pero sin registro de consumo (¿falta migrar la BD?): ' . $ai['error']);
             } elseif (($ai['limit_state'] ?? '') === 'blocked') {
-                $add('danger', sprintf('IA: límite mensual agotado (%s de %s): los usuarios ya no pueden filtrar con IA',
+                $add('danger', sprintf('IA: límite mensual agotado (%s de %s): ya no se puede usar la IA hasta el mes que viene',
                     self::eur((float) $ai['month_cost_eur']), self::eur((float) $ai['monthly_limit_eur'])));
             } elseif (($ai['limit_state'] ?? '') === 'warn') {
                 $add('warning', sprintf('IA: %d %% del límite mensual (%s de %s)',
@@ -135,7 +135,7 @@ final class Health
                     self::eur((float) $ai['month_cost_eur']), self::eur((float) $ai['monthly_limit_eur'])));
             }
             if ((int) ($ai['errors'] ?? 0) > 0) {
-                $add('info', sprintf('IA: %d consultas con error este mes (clave, conexión o servicio): mira «Consumo de IA» en la instalación', (int) $ai['errors']));
+                $add('info', sprintf('IA: %d consultas con error este mes (clave, conexión o servicio): mira el log de la instalación', (int) $ai['errors']));
             }
         }
 

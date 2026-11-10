@@ -2,6 +2,11 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.5.1 — 2026-11-10
+
+- Las webs Neutron (1.16.0+) mandan el gasto de su IA del editor igual que Quasar: sale en el panel, en la ficha (como
+  «IA en el editor») y en los avisos del límite mensual.
+
 ## 0.5.0 — 2026-11-10
 
 - **Campañas**: avisos de AFI en el inicio del panel de las webs Neutron (1.14.0+), para todas o para unas concretas

@@ -164,14 +164,14 @@ $urls = [
       </div>
     </section>
 
-    <?php $ai = $d['ai'] ?? null; ?>
+    <?php $ai = $d['ai'] ?? null; $neutronAi = $inst['app'] === 'neutron'; ?>
     <?php if (is_array($ai)): ?>
       <section class="cs-card">
-        <div class="cs-card-head"><h2><?= $this->icon('sparkles') ?> Filtrado con IA</h2>
+        <div class="cs-card-head"><h2><?= $this->icon('sparkles') ?> <?= $neutronAi ? 'IA en el editor' : 'Filtrado con IA' ?></h2>
           <?php if (!empty($ai['enabled'])): ?><span class="cs-badge cs-badge-success">activada</span><?php else: ?><span class="cs-badge">desactivada</span><?php endif ?></div>
         <div class="cs-card-body">
           <?php if (empty($ai['enabled'])): ?>
-            <p class="cs-muted cs-small">Se activa con <code>ai.enabled</code> y <code>ai.api_key</code> en el <code>config.local.php</code> de la instalación, y <code>"list": { "ai": … }</code> en cada módulo.</p>
+            <p class="cs-muted cs-small">Se activa con <code>ai.enabled</code> y <code>ai.api_key</code> en el <code>config.local.php</code> de la instalación<?= $neutronAi ? ' (Neutron 1.16.0 o posterior): mejorar, corregir y traducir textos y escribir la descripción para Google en el panel' : ', y <code>"list": { "ai": … }</code> en cada módulo' ?>.</p>
           <?php elseif (isset($ai['error'])): ?>
             <p class="cs-c-warning">Sin datos de consumo: <?= $this->e($ai['error']) ?></p>
           <?php else:
@@ -192,7 +192,7 @@ $urls = [
               <dt>Consultas</dt><dd><?= (int) ($ai['queries'] ?? 0) ?> este mes<?= (int) ($ai['errors'] ?? 0) ? ' · <span class="cs-c-warning">' . (int) $ai['errors'] . ' con error</span>' : '' ?></dd>
               <dt>Tokens</dt><dd class="cs-small"><?= number_format((int) ($ai['input_tokens'] ?? 0), 0, ',', '.') ?> de entrada · <?= number_format((int) ($ai['output_tokens'] ?? 0), 0, ',', '.') ?> de salida</dd>
             </dl>
-            <p class="cs-muted cs-small" style="margin:8px 0 0">Datos de la última comprobación (<?= $this->time($snap['checked_at'] ?? null) ?>). El detalle de cada consulta está en «Consumo de IA» de la instalación.</p>
+            <p class="cs-muted cs-small" style="margin:8px 0 0">Datos de la última comprobación (<?= $this->time($snap['checked_at'] ?? null) ?>).<?= $neutronAi ? '' : ' El detalle de cada consulta está en «Consumo de IA» de la instalación.' ?></p>
           <?php endif ?>
         </div>
       </section>
