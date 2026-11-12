@@ -2,6 +2,13 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.6.0 — 2026-11-12
+
+- **MCP para Claude Code** (`bin/mcp.php`): desde VS Code, Claude ve las instalaciones y las versiones publicadas y,
+  cuando se lo pides, actualiza unas instalaciones o todas las desactualizadas de una aplicación, con tu confirmación.
+- **API con token** (`?r=api`) para el MCP: token personal por usuario (`api_token`, `php bin/api-token.php`), con los
+  permisos de su rol. Las etiquetas recién subidas se ven al momento.
+
 ## 0.5.1 — 2026-11-10
 
 - Las webs Neutron (1.16.0+) mandan el gasto de su IA del editor igual que Quasar: sale en el panel, en la ficha (como

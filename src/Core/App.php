@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Cosmo\Core;
 
 use Cosmo\Controllers\ActivityController;
+use Cosmo\Controllers\ApiController;
 use Cosmo\Controllers\AuthController;
 use Cosmo\Controllers\BackupController;
 use Cosmo\Controllers\CampaignController;
@@ -114,6 +115,12 @@ final class App
         }
 
         $this->securityHeaders();
+        if ($route === 'api') {
+            // API con token (el MCP de bin/mcp.php): sin sesión ni CSRF
+            $this->route = $route;
+            (new ApiController($this))->handle();
+            return;
+        }
         Session::start($this->config);
 
         try {

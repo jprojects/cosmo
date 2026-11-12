@@ -16,6 +16,7 @@ return [
     // Usuarios del panel. password = hash de password_hash():  php bin/hash-password.php
     // role: admin (todo, incluido dar de alta instalaciones) | operator (copias, actualizaciones,
     //       mantenimiento) | viewer (solo consulta)
+    // api_token (opcional): sha256 del token de la API para el MCP de Claude Code (php bin/api-token.php)
     'users' => [
         // 'kim' => ['name' => 'Kim', 'email' => 'kim@example.com', 'password' => '$2y$12$…', 'role' => 'admin'],
     ],

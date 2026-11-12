@@ -94,6 +94,25 @@ final class Auth
         return null;
     }
 
+    /**
+     * Usuario de un token de la API (?r=api, el MCP): en config 'users', 'api_token' es el sha256 del token
+     * (lo genera bin/api-token.php). Sin sesión: vale para esta petición.
+     */
+    public function tokenUser(string $token): ?User
+    {
+        if (strlen($token) < 32) {
+            return null;
+        }
+        $hash = hash('sha256', $token);
+        foreach ((array) ($this->config['users'] ?? []) as $username => $def) {
+            $expected = is_array($def) ? strtolower((string) ($def['api_token'] ?? '')) : '';
+            if (strlen($expected) === 64 && hash_equals($expected, $hash) && ($def = $this->definition((string) $username)) !== null) {
+                return $this->user = $this->makeUser((string) $username, $def);
+            }
+        }
+        return null;
+    }
+
     public function logout(): void
     {
         Session::reset();

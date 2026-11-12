@@ -183,11 +183,49 @@ Desde la ficha (o varias a la vez desde el panel), Cosmo:
 Si la migración falla, la instalación se queda en mantenimiento y la ficha ofrece **Reintentar migración**.
 Si alguien cambió a mano ficheros del núcleo, la actualización se detiene y los enumera; se puede forzar.
 
+## MCP para Claude Code
+
+`bin/mcp.php` es un servidor MCP local (stdio, sin dependencias, como el de Asteroid) para que Claude Code, desde
+VS Code y en cualquier proyecto, vea las instalaciones y las **actualice cuando se lo pidas**: p. ej. después de
+etiquetar y subir una versión de Neutron, «actualiza las webs Neutron a la 1.27.0». Antes de actualizar enseña cuáles y
+a qué versión y espera tu confirmación. Solo hay versiones etiquetadas y subidas a GitHub (`vX.Y.Z`): un commit sin
+etiqueta no basta.
+
+| Herramienta | Hace |
+|---|---|
+| `cosmo_instalaciones` | instalaciones (de una aplicación o todas) con su versión, la última publicada y si responden; `comprobar` pide el estado ahora |
+| `cosmo_versiones` | versiones publicadas de una aplicación, su CHANGELOG y qué instalaciones hay en cada una |
+| `cosmo_actualiza` | actualiza unas instalaciones concretas, o todas las desactualizadas de una aplicación, de una en una (la misma actualización del panel) |
+
+Habla con la API de Cosmo (`?r=api`) con un **token personal** que tiene los permisos de tu rol (para actualizar,
+`operator` o `admin`). Las etiquetas se consultan a GitHub en el momento (sin la caché de 10 minutos) y cada acción
+queda en la actividad con tu usuario.
+
+**Una vez**, en el servidor de Cosmo:
+
+```bash
+php bin/api-token.php kim     # enseña el token y la línea a pegar en el usuario de config.local.php
+```
+
+```php
+'kim' => [ …, 'api_token' => '…sha256 del token…' ],
+```
+
+Cosmo solo guarda el sha256; para revocarlo, quita o cambia esa línea. En tu ordenador:
+
+```bash
+mkdir -p ~/.config/cosmo-mcp && (umask 077; echo 'cs_…' > ~/.config/cosmo-mcp/token)
+claude mcp add cosmo --scope user -e COSMO_URL=https://cosmo.ejemplo.com -- php /ruta/a/cosmo/bin/mcp.php
+```
+
+(O el token en `COSMO_TOKEN`, o en otro fichero con `COSMO_TOKEN_FILE`.) Una actualización puede tardar minutos:
+si el servidor web de Cosmo corta antes las peticiones largas, sube su tiempo límite (como para el panel).
+
 ## Estructura
 
 ```
 config/            config.php (+ config.local.php: clave, usuarios, token de GitHub; no versionar)
-bin/               setup.php · hash-password.php · cron.php
+bin/               setup.php · hash-password.php · cron.php · api-token.php · mcp.php (MCP para Claude Code)
 public/index.php   único punto de entrada
 src/Core/          App (rutas), Auth, Session, View, Store (JSON), Crypto, Log
 src/Services/      Apps, Installations, QuasarClient, GitHub, Monitor, Health, Operations, LocalBackups, Activity, Notifier
@@ -218,7 +256,8 @@ return [
 ## Seguridad
 
 - Los tokens de las instalaciones se guardan cifrados (libsodium, o AES-256-GCM de OpenSSL si no está) con la clave de `config.local.php`.
-- Todas las acciones exigen sesión, el rol adecuado y token CSRF; cada una queda en la actividad.
+- Todas las acciones exigen sesión, el rol adecuado y token CSRF; cada una queda en la actividad. La API del MCP
+  (`?r=api`) exige en su lugar el token personal del usuario (`Authorization: Bearer`), con los permisos de su rol.
 - Las peticiones a las instalaciones verifican el certificado SSL (se puede desactivar por instalación) y no
   siguen redirecciones.
 - Cabeceras de seguridad y CSP estricta (sin scripts en línea).
