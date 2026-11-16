@@ -227,7 +227,7 @@ si el servidor web de Cosmo corta antes las peticiones largas, sube su tiempo l�
 Las webs Neutron (1.28.0+) enlazan su guía de edición en el panel (`site/guia-edicio.pdf`) y desde la 1.29.0 dicen si se ha
 quedado vieja: si ha cambiado la estructura de la web desde que se hizo (plantilla, páginas, parciales, colecciones,
 idiomas) o cuántos campos se han editado después. Cosmo lo enseña en la ficha (**Guía**) y en los avisos: sin guía (info),
-estructura cambiada (aviso) o 30 campos editados o más (info, `Health::GUIDE_STALE_EDITS`). `cosmo_instalaciones` lo dice en
+guía de una edición anterior del editor y el panel o estructura cambiada (aviso) o 30 campos editados o más (info, `Health::GUIDE_STALE_EDITS`). `cosmo_instalaciones` lo dice en
 cada web Neutron.
 
 La guía se hace con Chromium, que el servidor de Cosmo no tiene: la regenera `cosmo_guia`, en el ordenador donde corre el

@@ -123,6 +123,7 @@ $urls = [
                   <?php if ($g === null): ?><span class="cs-muted">sin guía de edición (MCP: cosmo_guia)</span>
                   <?php else: ?>
                     <?= $this->e($g['nom'] ?? 'guía de edición') ?> · <?= $this->time($g['generated'] ?? $g['modified']) ?> (<?= $this->bytes((int) $g['size']) ?>)
+                    <?php if (!empty($g['outdated'])): ?> · <span class="cs-c-warning">de una versión anterior del editor</span><?php endif ?>
                     <?php if (!empty($g['structure_changed'])): ?> · <span class="cs-c-warning">la estructura de la web ha cambiado</span><?php endif ?>
                     <?php if (!empty($g['edits_since'])): ?> · <?= (int) $g['edits_since'] ?> campos editados después<?php endif ?>
                   <?php endif ?>

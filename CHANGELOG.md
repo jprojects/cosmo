@@ -2,6 +2,12 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.7.1 — 2026-11-16
+
+- Guía de edición: aviso cuando la de una web es de una edición anterior del editor y el panel (Neutron 1.30.0+,
+  `site.guide.outdated`), en la ficha, en los avisos y en `cosmo_instalaciones`. `cosmo_guia` le pasa a `generar.py` si la
+  web tiene SEO e IA (lo dice su estado), para que la guía los explique.
+
 ## 0.7.0 — 2026-11-16
 
 - **Guía de edición de las webs Neutron** (1.28.0+): la ficha dice si la web tiene guía, cuándo se hizo y si se ha quedado

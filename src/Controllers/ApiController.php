@@ -132,6 +132,8 @@ final class ApiController extends Controller
                 'error' => $snap['error'] ?? null,
                 // Neutron 1.28.0+: la guía de edición ({…} o null); no está en las demás aplicaciones ni versiones
                 'guide' => array_key_exists('guide', (array) (Monitor::data($snap)['site'] ?? [])) ? Monitor::data($snap)['site']['guide'] : false,
+                // Lo que la guía explica según la configuración del servidor (Neutron 1.30.0+ dice el SEO; null = no se sabe)
+                'features' => ['seo' => Monitor::data($snap)['seo']['enabled'] ?? null, 'ai' => Monitor::data($snap)['ai']['enabled'] ?? null],
             ];
         }
         $this->app->json(['ok' => true, 'latest' => $latest, 'github_errors' => $errors, 'installations' => $rows]);

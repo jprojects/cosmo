@@ -113,6 +113,8 @@ final class Health
             $g = $d['site']['guide'];
             if ($g === null) {
                 $add('info', 'Sin guía de edición en el panel de la web (MCP: cosmo_guia)');
+            } elseif (!empty($g['outdated'])) {
+                $add('warning', 'Guía de edición de una versión anterior del editor y el panel: no explica lo nuevo (MCP: cosmo_guia)');
             } elseif (!empty($g['structure_changed'])) {
                 $add('warning', 'Guía de edición desactualizada: la estructura de la web ha cambiado desde que se hizo (MCP: cosmo_guia)');
             } elseif ((int) ($g['edits_since'] ?? 0) >= self::GUIDE_STALE_EDITS) {

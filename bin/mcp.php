@@ -307,6 +307,9 @@ final class Tools
         if ($g === null) {
             return 'sin guía';
         }
+        if (!empty($g['outdated'])) {
+            return 'guía de una versión anterior del editor';
+        }
         if (!empty($g['structure_changed'])) {
             return 'guía desactualizada (ha cambiado la estructura)';
         }
@@ -381,7 +384,14 @@ final class Tools
 
             $step(3, "Generando la guía («{$nom}», $url)");
             $pdf = $tmp . '/guia-edicio.pdf';
-            $out = self::run(['python3', $generar, $tmp . '/web', '--nom', $nom, '--url', $url, '--sortida', $pdf]);
+            // SEO e IA dependen del config.local.php del servidor, que la copia no lleva: lo dice el estado de la web
+            $flags = [];
+            foreach (['seo' => '--seo', 'ai' => '--ia'] as $k => $flag) {
+                if (isset($row['features'][$k])) {
+                    array_push($flags, $flag, $row['features'][$k] ? 'si' : 'no');
+                }
+            }
+            $out = self::run(array_merge(['python3', $generar, $tmp . '/web', '--nom', $nom, '--url', $url, '--sortida', $pdf], $flags));
             $meta = json_decode((string) @file_get_contents($tmp . '/guia-edicio.json'), true);
             if (!is_file($pdf) || !is_array($meta)) {
                 throw new RuntimeException("generar.py no ha dejado el PDF:\n" . $out);
