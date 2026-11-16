@@ -2,6 +2,14 @@
 
 Formato: una sección por versión, la más reciente arriba. Cada versión se etiqueta en git como `vX.Y.Z`.
 
+## 0.7.0 — 2026-11-16
+
+- **Guía de edición de las webs Neutron** (1.28.0+): la ficha dice si la web tiene guía, cuándo se hizo y si se ha quedado
+  vieja (Neutron 1.29.0+: ha cambiado la estructura de la web o se han editado muchos campos después), con su aviso.
+- MCP: herramienta nueva **`cosmo_guia`**, que regenera la guía de una web en el ordenador donde corre el MCP (copia de
+  `site/`, `generar.py` del repositorio de Neutron) y la sube a su panel. `cosmo_instalaciones` dice el estado de la guía.
+- API del MCP: acciones `site-backup`, `backup-file`, `backup-delete` y `guide-upload` (rol de operador).
+
 ## 0.6.0 — 2026-11-12
 
 - **MCP para Claude Code** (`bin/mcp.php`): desde VS Code, Claude ve las instalaciones y las versiones publicadas y,

@@ -196,6 +196,7 @@ etiqueta no basta.
 | `cosmo_instalaciones` | instalaciones (de una aplicación o todas) con su versión, la última publicada y si responden; `comprobar` pide el estado ahora |
 | `cosmo_versiones` | versiones publicadas de una aplicación, su CHANGELOG y qué instalaciones hay en cada una |
 | `cosmo_actualiza` | actualiza unas instalaciones concretas, o todas las desactualizadas de una aplicación, de una en una (la misma actualización del panel) |
+| `cosmo_guia` | regenera la guía de edición (PDF) de una web Neutron 1.29.0+ con su contenido de ahora y la pone en su panel (ver abajo) |
 
 Habla con la API de Cosmo (`?r=api`) con un **token personal** que tiene los permisos de tu rol (para actualizar,
 `operator` o `admin`). Las etiquetas se consultan a GitHub en el momento (sin la caché de 10 minutos) y cada acción
@@ -220,6 +221,21 @@ claude mcp add cosmo --scope user -e COSMO_URL=https://cosmo.ejemplo.com -- php 
 
 (O el token en `COSMO_TOKEN`, o en otro fichero con `COSMO_TOKEN_FILE`.) Una actualización puede tardar minutos:
 si el servidor web de Cosmo corta antes las peticiones largas, sube su tiempo límite (como para el panel).
+
+### Guía de edición de las webs Neutron
+
+Las webs Neutron (1.28.0+) enlazan su guía de edición en el panel (`site/guia-edicio.pdf`) y desde la 1.29.0 dicen si se ha
+quedado vieja: si ha cambiado la estructura de la web desde que se hizo (plantilla, páginas, parciales, colecciones,
+idiomas) o cuántos campos se han editado después. Cosmo lo enseña en la ficha (**Guía**) y en los avisos: sin guía (info),
+estructura cambiada (aviso) o 30 campos editados o más (info, `Health::GUIDE_STALE_EDITS`). `cosmo_instalaciones` lo dice en
+cada web Neutron.
+
+La guía se hace con Chromium, que el servidor de Cosmo no tiene: la regenera `cosmo_guia`, en el ordenador donde corre el
+MCP. Pide a la web una copia de `site/` (por la API de Cosmo: `site-backup`, `backup-file`), la monta con el núcleo de la
+versión que tiene instalada (la etiqueta del repositorio de Neutron, `NEUTRON_REPO`, por defecto `~/Projects/neutron`),
+ejecuta `docs/guia-edicio/generar.py` y sube el PDF (`guide-upload` → acción remota `guide-set`). Después borra la copia.
+El nombre y la dirección de la portada salen de la guía anterior o de la ficha; con `carpeta` deja también la guía en la
+carpeta local de la web. Hace falta lo mismo que para `generar.py` (Python con PIL, Node 22, Chromium y `pdfunite`).
 
 ## Estructura
 

@@ -118,6 +118,16 @@ $urls = [
                 <?php if (!empty($d['site']['content_modified'])): ?> · contenido editado <?= $this->time($d['site']['content_modified']) ?><?php endif ?>
                 <?php if (isset($d['site']['content_size'])): ?> (<?= $this->bytes((int) $d['site']['content_size']) ?>)<?php endif ?>
               </dd>
+              <?php if (array_key_exists('guide', $d['site'])): $g = $d['site']['guide']; ?>
+                <dt>Guía</dt><dd>
+                  <?php if ($g === null): ?><span class="cs-muted">sin guía de edición (MCP: cosmo_guia)</span>
+                  <?php else: ?>
+                    <?= $this->e($g['nom'] ?? 'guía de edición') ?> · <?= $this->time($g['generated'] ?? $g['modified']) ?> (<?= $this->bytes((int) $g['size']) ?>)
+                    <?php if (!empty($g['structure_changed'])): ?> · <span class="cs-c-warning">la estructura de la web ha cambiado</span><?php endif ?>
+                    <?php if (!empty($g['edits_since'])): ?> · <?= (int) $g['edits_since'] ?> campos editados después<?php endif ?>
+                  <?php endif ?>
+                </dd>
+              <?php endif ?>
               <dt>Formulario</dt><dd>
                 <?php if (empty($d['site']['contact_form'])): ?><span class="cs-muted">sin formulario de contacto</span>
                 <?php else: ?>reCAPTCHA <?= $yes($d['recaptcha']['enabled'] ?? null, 'activado', 'sin claves') ?><?php endif ?>

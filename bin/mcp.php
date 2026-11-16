@@ -12,6 +12,10 @@
  *   claude mcp add cosmo --scope user -e COSMO_URL=https://cosmo.ejemplo.com -- php /home/…/cosmo/bin/mcp.php
  *
  * El token se lee de COSMO_TOKEN o, si no está, de ~/.config/cosmo-mcp/token (o de COSMO_TOKEN_FILE).
+ *
+ * cosmo_guia regenera la guía de edición de una web Neutron aquí (hace falta Chromium, que el servidor de Cosmo no tiene):
+ * baja site/ con una copia, lo monta con el núcleo del repositorio de Neutron (NEUTRON_REPO, por defecto ~/Projects/neutron),
+ * ejecuta docs/guia-edicio/generar.py y sube el PDF a la web (guide-set). Hace falta lo que pide generar.py.
  * Protocolo: JSON-RPC 2.0, un mensaje por línea en stdin/stdout (los avisos van a stderr).
  */
 declare(strict_types=1);
@@ -22,6 +26,7 @@ if (PHP_SAPI !== 'cli') {
 
 const MCP_VERSION = '2025-06-18';
 const UPDATE_TIMEOUT = 1800;   // una actualización (copia previa + subida + migración) puede tardar
+const GUIDE_TIMEOUT = 600;     // copia de site/ y descarga
 
 $base = rtrim((string) getenv('COSMO_URL'), '/');
 $home = (string) (getenv('HOME') ?: getenv('USERPROFILE') ?: '');
@@ -67,6 +72,30 @@ final class CosmoApi
             throw new RuntimeException("Cosmo ha respondido $status sin JSON (revisa COSMO_URL)");
         }
         return [$status, $data];
+    }
+
+    /** Una respuesta que no es JSON (una copia) a un fichero. */
+    public function download(string $action, array $query, string $dest, int $timeout = GUIDE_TIMEOUT): void
+    {
+        $url = $this->base . '/index.php?' . http_build_query(['r' => 'api', 'a' => $action] + $query);
+        $out = fopen($dest, 'wb');
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $this->token, 'X-Cosmo-Token: ' . $this->token],
+            CURLOPT_FILE => $out,
+            CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_USERAGENT => 'Cosmo-MCP/1.0',
+        ] + (PHP_OS_FAMILY === 'Windows' && defined('CURLSSLOPT_NATIVE_CA') ? [CURLOPT_SSL_OPTIONS => CURLSSLOPT_NATIVE_CA] : []));
+        $ok = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $error = curl_error($ch);
+        fclose($out);
+        if ($ok === false || $status !== 200) {
+            $body = json_decode((string) @file_get_contents($dest), true);
+            @unlink($dest);
+            throw new RuntimeException('No se puede bajar la copia: ' . ($body['error'] ?? ($error ?: "HTTP $status")));
+        }
     }
 
     /** Como call(), pero un error HTTP es una excepción. */
@@ -131,6 +160,22 @@ final class Tools
                 ]],
                 'annotations' => ['destructiveHint' => true, 'idempotentHint' => false, 'openWorldHint' => true],
             ],
+            [
+                'name' => 'cosmo_guia',
+                'description' => 'Regenera la guía de edición (PDF) de una web Neutron 1.29.0+ con su contenido de ahora y la pone en su '
+                    . 'panel: baja site/ con una copia, genera la guía aquí (docs/guia-edicio/generar.py del repositorio de Neutron, '
+                    . 'con Chromium; tarda un par de minutos) y la sube. cosmo_instalaciones dice qué webs no tienen guía o la '
+                    . 'tienen vieja. El nombre y la dirección de la portada salen de la guía anterior (o de la ficha de Cosmo) si no '
+                    . 'se dan. Con «carpeta» (la de la web en este ordenador) deja allí también la copia con fecha y la de site/. '
+                    . 'Úsala solo cuando el usuario lo pida.',
+                'inputSchema' => ['type' => 'object', 'properties' => [
+                    'instalacion' => ['type' => 'string', 'description' => 'Id de la instalación (cosmo_instalaciones)'],
+                    'nom' => ['type' => 'string', 'description' => 'Nombre de la web en la portada'],
+                    'url' => ['type' => 'string', 'description' => 'Dirección pública de la web'],
+                    'carpeta' => ['type' => 'string', 'description' => 'Carpeta local de la web (opcional)'],
+                ], 'required' => ['instalacion']],
+                'annotations' => ['destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => true],
+            ],
         ];
     }
 
@@ -143,6 +188,7 @@ final class Tools
             'cosmo_instalaciones' => $this->installations($args),
             'cosmo_versiones' => $this->releases($args),
             'cosmo_actualiza' => $this->update($args),
+            'cosmo_guia' => $this->guide($args),
             default => throw new InvalidArgumentException("Herramienta desconocida: $name"),
         };
     }
@@ -172,6 +218,7 @@ final class Tools
                 $r['online'] === false ? 'NO RESPONDE: ' . $r['error'] : null,
                 $r['online'] === null ? 'sin comprobar' : null,
                 $r['maintenance'] ? 'en mantenimiento' : null,
+                self::guideFlag(array_key_exists('guide', $r) ? $r['guide'] : false),
             ]);
             $out[] = sprintf('- %s · %s · %s %s%s', $r['id'], $r['name'], $r['app'], $r['version'] ?? '?', $flags ? ' · ' . implode(' · ', $flags) : '');
         }
@@ -250,6 +297,141 @@ final class Tools
         ($this->progress)(count($ids), count($ids), 'Hecho');
         array_unshift($out, sprintf('%d de %d actualizadas%s', count($ids) - $failed, count($ids), $failed ? " ($failed con error)" : ''), '');
         return ['content' => [['type' => 'text', 'text' => implode("\n", $out)]]] + ($failed === count($ids) ? ['isError' => true] : []);
+    }
+
+    private static function guideFlag(mixed $g): ?string
+    {
+        if ($g === false) {
+            return null;    // no es Neutron o es anterior a la 1.28.0
+        }
+        if ($g === null) {
+            return 'sin guía';
+        }
+        if (!empty($g['structure_changed'])) {
+            return 'guía desactualizada (ha cambiado la estructura)';
+        }
+        $edits = (int) ($g['edits_since'] ?? 0);
+        return $edits ? "guía con $edits campos editados después" : 'guía al día';
+    }
+
+    private function guide(array $args): array
+    {
+        $id = (string) ($args['instalacion'] ?? '');
+        $d = $this->api->get('installations', ['app' => 'neutron']);
+        $row = null;
+        foreach ($d['installations'] as $r) {
+            if ($r['id'] === $id) {
+                $row = $r;
+            }
+        }
+        if ($row === null) {
+            throw new InvalidArgumentException("No hay ninguna instalación Neutron «{$id}» en Cosmo");
+        }
+        $repo = (string) (getenv('NEUTRON_REPO') ?: (getenv('HOME') . '/Projects/neutron'));
+        $generar = $repo . '/docs/guia-edicio/generar.py';
+        if (!is_file($generar)) {
+            throw new RuntimeException("No encuentro $generar (pon NEUTRON_REPO)");
+        }
+        $old = is_array($row['guide'] ?? null) ? $row['guide'] : [];
+        $nom = trim((string) ($args['nom'] ?? '')) ?: ($old['nom'] ?? $row['name']);
+        $url = trim((string) ($args['url'] ?? '')) ?: ($old['url'] ?? $row['url']);
+        $steps = [];
+        $step = function (int $n, string $text) use (&$steps): void {
+            $steps[] = $text;
+            ($this->progress)($n, 5, $text);
+        };
+
+        $tmp = sys_get_temp_dir() . '/cosmo-guia-' . $id . '-' . bin2hex(random_bytes(3));
+        mkdir($tmp . '/web', 0700, true);
+        $backup = null;
+        try {
+            $step(0, 'Copia de site/ en la web');
+            [$status, $b] = $this->api->call('POST', 'site-backup', [], ['id' => $id], GUIDE_TIMEOUT);
+            if ($status >= 400 || empty($b['ok'])) {
+                throw new RuntimeException('La copia falla: ' . ($b['error'] ?? implode('; ', array_column($b['steps'] ?? [], 'text'))));
+            }
+            $backup = (string) $b['backup']['file'];
+            $step(1, "Bajando $backup");
+            $zipFile = $tmp . '/site.zip';
+            $this->api->download('backup-file', ['id' => $id, 'file' => $backup], $zipFile);
+
+            // El núcleo de la versión que tiene instalada (su etiqueta), para que se vea igual; si no está, el del repositorio
+            $ref = 'v' . (string) $row['version'];
+            $hasTag = trim(self::run(['git', '-C', $repo, 'tag', '--list', $ref], false)) === $ref;
+            $ref = $hasTag ? $ref : 'HEAD';
+            $step(2, "Montando la web con el núcleo de Neutron ($ref)");
+            self::run(['sh', '-c', 'git -C ' . escapeshellarg($repo) . ' archive ' . escapeshellarg($ref) . ' | tar -x -C ' . escapeshellarg($tmp . '/web')]);
+            $zip = new ZipArchive();
+            if ($zip->open($zipFile) !== true) {
+                throw new RuntimeException('La copia no es un ZIP');
+            }
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $name = (string) $zip->getNameIndex($i);
+                if (!str_starts_with($name, 'files/site/') || str_contains($name, '..') || str_ends_with($name, '/')) {
+                    continue;
+                }
+                $dest = $tmp . '/web/' . substr($name, strlen('files/'));
+                @mkdir(dirname($dest), 0700, true);
+                file_put_contents($dest, $zip->getFromIndex($i));
+            }
+            $zip->close();
+            if (!is_file($tmp . '/web/site/template.html')) {
+                throw new RuntimeException('La copia no trae site/template.html');
+            }
+
+            $step(3, "Generando la guía («{$nom}», $url)");
+            $pdf = $tmp . '/guia-edicio.pdf';
+            $out = self::run(['python3', $generar, $tmp . '/web', '--nom', $nom, '--url', $url, '--sortida', $pdf]);
+            $meta = json_decode((string) @file_get_contents($tmp . '/guia-edicio.json'), true);
+            if (!is_file($pdf) || !is_array($meta)) {
+                throw new RuntimeException("generar.py no ha dejado el PDF:\n" . $out);
+            }
+
+            $step(4, 'Subiendo la guía a la web');
+            [$status, $u] = $this->api->call('POST', 'guide-upload', [], [
+                'id' => $id, 'pdf' => base64_encode((string) file_get_contents($pdf)), 'meta' => $meta,
+            ], GUIDE_TIMEOUT);
+            if ($status >= 400 || empty($u['ok'])) {
+                throw new RuntimeException('No se puede subir: ' . ($u['error'] ?? "HTTP $status"));
+            }
+            $steps[] = sprintf('Guía puesta en el panel de %s (%d KB)', $row['name'], (int) round(filesize($pdf) / 1024));
+
+            $folder = trim((string) ($args['carpeta'] ?? ''));
+            if ($folder !== '') {
+                $folder = rtrim((string) preg_replace('~^~(?=/|$)~', (string) getenv('HOME'), $folder), '/');
+                if (!is_dir($folder . '/site')) {
+                    $steps[] = "✘ $folder no es la carpeta de una web Neutron (sin site/): no se copia allí";
+                } else {
+                    copy($pdf, $folder . '/guia-edicio-' . date('Y-m-d') . '.pdf');
+                    copy($pdf, $folder . '/site/guia-edicio.pdf');
+                    copy($tmp . '/guia-edicio.json', $folder . '/site/guia-edicio.json');
+                    $steps[] = "Copiada también en $folder (guia-edicio-" . date('Y-m-d') . '.pdf y site/)';
+                }
+            }
+        } finally {
+            if ($backup !== null) {
+                $this->api->call('POST', 'backup-delete', [], ['id' => $id, 'file' => $backup]);
+            }
+            self::run(['rm', '-rf', $tmp], false);
+        }
+        ($this->progress)(5, 5, 'Hecho');
+        return self::text("✔ Guía de edición de {$row['name']}\n" . implode("\n", array_map(static fn ($s) => '  · ' . $s, $steps)));
+    }
+
+    /** Ejecuta un programa; si falla (y $check), excepción con su salida. */
+    private static function run(array $cmd, bool $check = true): string
+    {
+        $p = proc_open($cmd, [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['redirect', 1]], $pipes);
+        if (!is_resource($p)) {
+            throw new RuntimeException('No se puede ejecutar ' . $cmd[0]);
+        }
+        $out = (string) stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        $code = proc_close($p);
+        if ($check && $code !== 0) {
+            throw new RuntimeException(implode(' ', array_slice($cmd, 0, 2)) . " ha fallado ($code):\n" . substr($out, -2000));
+        }
+        return $out;
     }
 
     private static function text(string $text): array

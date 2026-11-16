@@ -25,6 +25,7 @@ final class Activity
         'status.up' => 'Instalación recuperada',
         'backup.create' => 'Copia de seguridad',
         'backup.delete' => 'Copia borrada',
+        'guide.upload' => 'Guía de edición puesta',
         'backup.pull' => 'Copia guardada en Cosmo',
         'backup.download' => 'Copia descargada',
         'backup.local-delete' => 'Copia local borrada',

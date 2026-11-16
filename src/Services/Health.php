@@ -19,6 +19,9 @@ final class Health
      * @param array $app definición de la aplicación (Apps::get)
      * @return list<array{level:string,text:string}>
      */
+    /** Campos editados en la web desde la guía a partir de los cuales se sugiere regenerarla */
+    public const GUIDE_STALE_EDITS = 30;
+
     public static function warnings(?array $snapshot, array $app, ?string $latest, array $monitor): array
     {
         $w = [];
@@ -104,6 +107,17 @@ final class Health
         }
         if (!empty($d['recaptcha']['missing'])) {
             $add('warning', 'Formulario de contacto sin reCAPTCHA: pon las claves en recaptcha del config.local.php');
+        }
+        // Neutron 1.28.0+: la guía de edición que enlaza el panel de la web (se regenera con el MCP, cosmo_guia)
+        if (is_array($d['site'] ?? null) && array_key_exists('guide', $d['site'])) {
+            $g = $d['site']['guide'];
+            if ($g === null) {
+                $add('info', 'Sin guía de edición en el panel de la web (MCP: cosmo_guia)');
+            } elseif (!empty($g['structure_changed'])) {
+                $add('warning', 'Guía de edición desactualizada: la estructura de la web ha cambiado desde que se hizo (MCP: cosmo_guia)');
+            } elseif ((int) ($g['edits_since'] ?? 0) >= self::GUIDE_STALE_EDITS) {
+                $add('info', sprintf('Guía de edición: %d campos editados desde que se hizo; quizá conviene regenerarla (MCP: cosmo_guia)', (int) $g['edits_since']));
+            }
         }
         foreach (['zip' => 'copias y actualizaciones', 'pdo_mysql' => 'base de datos', 'fileinfo' => 'subida de archivos'] as $ext => $for) {
             if (isset($d['extensions'][$ext]) && !$d['extensions'][$ext]) {
